@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GoTo — Government Optimized Transport Operations</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#01696f;--teal-dark:#014a4e;
+  --red:#a13544;--orange:#da7101;--green:#437a22;
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;
+  --font:'General Sans',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font)}
+.deck{width:100vw;height:100vh;position:relative}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity 0.45s ease,transform 0.45s ease;transform:translateY(18px)}
+.slide.active{opacity:1;pointer-events:all;transform:translateY(0)}
+.slide.exit{opacity:0;transform:translateY(-18px)}
+.progress{position:fixed;top:0;left:0;height:3px;background:var(--teal);transition:width 0.4s ease;z-index:999}
+.nav{position:fixed;bottom:22px;right:26px;display:flex;gap:10px;z-index:999}
+.nav button{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,0.08);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+.nav button:hover{background:rgba(255,255,255,0.18)}
+.counter{position:fixed;bottom:26px;left:26px;font-size:11px;color:var(--muted);z-index:999;font-weight:500;letter-spacing:0.06em}
+
+/* Shared */
+.crit-num{font-size:clamp(16px,2vw,24px);font-weight:700;color:var(--teal);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.crit-num::after{content:'';flex:1;height:2px;background:rgba(1,105,111,0.25);border-radius:2px}
+.slide-title{font-size:clamp(28px,4vw,46px);font-weight:700;line-height:1.1;letter-spacing:-0.02em;margin-bottom:24px}
+.slide-title span{color:var(--teal)}
+.body-text{font-size:clamp(15px,1.8vw,20px);color:var(--muted);line-height:1.6;max-width:720px}
+.cover-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(1,105,111,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(1,105,111,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
+.dark-bg{background:linear-gradient(135deg,#0d1117 0%,#0a1f20 60%,#0d2a2b 100%)}
+
+/* Two-col layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;width:100%;flex:1;align-items:start}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;width:100%}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
+.card-num{font-size:clamp(52px,6vw,80px);font-weight:700;line-height:1}
+.card-label{font-size:15px;color:var(--muted);line-height:1.4;margin-top:8px}
+.card.red{border-color:rgba(161,53,68,0.4);background:rgba(161,53,68,0.06)}
+.card.orange{border-color:rgba(218,113,1,0.4);background:rgba(218,113,1,0.06)}
+.card.teal{border-color:rgba(1,105,111,0.4);background:rgba(1,105,111,0.06)}
+.card.green{border-color:rgba(67,122,34,0.4);background:rgba(67,122,34,0.06)}
+
+/* Tag */
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 9px;border-radius:8px;margin-bottom:8px}
+.tag.d{background:rgba(161,53,68,0.15);color:#dd6974}
+.tag.p{background:rgba(218,113,1,0.15);color:#fdab43}
+.tag.g{background:rgba(67,122,34,0.15);color:#6daa45}
+.tag.t{background:rgba(1,105,111,0.15);color:#4f98a3}
+
+/* Bullet rows */
+.bullet-row{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px}
+.bullet-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex-shrink:0;margin-top:8px}
+.bullet-text{font-size:clamp(15px,1.8vw,20px);color:var(--muted);line-height:1.5}
+.bullet-text strong{color:var(--text)}
+
+/* Persona */
+.persona{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px}
+.persona-name{font-size:17px;font-weight:700;color:var(--text);margin:8px 0 6px}
+.persona-detail{font-size:14px;color:var(--muted);line-height:1.6}
+
+/* Flow */
+.flow{display:flex;align-items:center;width:100%;margin-top:8px}
+.flow-step{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;opacity:0;transform:translateY(14px);transition:opacity 0.4s ease,transform 0.4s ease}
+.flow-step.vis{opacity:1;transform:translateY(0)}
+.flow-step.hi{border-color:rgba(1,105,111,0.5);background:rgba(1,105,111,0.08)}
+.flow-arrow{width:28px;flex-shrink:0;color:var(--teal);font-size:18px;text-align:center}
+.flow-icon{font-size:24px;margin-bottom:6px}
+.flow-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px}
+.flow-desc{font-size:11px;color:var(--muted);line-height:1.4}
+
+/* Stack card */
+.stack-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px}
+.stack-cat{font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px}
+.stack-name{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.stack-desc{font-size:12px;color:var(--muted);line-height:1.4}
+
+/* Impact toggle */
+.impact-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px;margin-bottom:28px}
+.impact-btn{padding:7px 22px;border-radius:5px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all 0.2s;color:var(--muted);background:transparent}
+.impact-btn.active{background:var(--teal);color:#fff}
+.impact-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center;transition:all 0.4s}
+.impact-card .val{font-size:clamp(36px,4.5vw,52px);font-weight:700;line-height:1;transition:all 0.4s}
+.impact-card .lbl{font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:0.06em}
+.impact-card .delta{font-size:13px;font-weight:600;margin-top:8px}
+.impact-card.imp .val{color:#6daa45}
+
+/* Slide padding */
+.pad{padding:52px 8%}
+.pad-center{padding:52px 8%;align-items:center;text-align:center}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}
+.slide.anim-ready .a1{animation:fadeUp 0.5s ease 0.08s both}
+.slide.anim-ready .a2{animation:fadeUp 0.5s ease 0.2s both}
+.slide.anim-ready .a3{animation:fadeUp 0.5s ease 0.34s both}
+.slide.anim-ready .a4{animation:fadeUp 0.5s ease 0.48s both}
+.slide.anim-ready .a5{animation:fadeUp 0.5s ease 0.62s both}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck">
+
+<!-- ── 0: COVER ──────────────────────────────────────────────── -->
+<div class="slide active dark-bg" id="s0">
+  <div class="cover-grid"></div>
+  <div class="pad" style="justify-content:center;flex:1;display:flex;flex-direction:column">
+    <div class="a1" style="display:inline-flex;align-items:center;gap:8px;background:rgba(1,105,111,0.15);border:1px solid rgba(1,105,111,0.3);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--teal);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:20px;width:fit-content">
+      <span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite;display:block"></span>
+      HV Open Data Hackathon 2026 · RPI Troy
+    </div>
+    <div class="a2" style="font-size:clamp(60px,9vw,110px);font-weight:700;line-height:1;letter-spacing:-0.04em;color:#fff">Go<span style="color:var(--teal)">To</span></div>
+    <div class="a3" style="font-size:clamp(13px,1.4vw,16px);color:rgba(255,255,255,0.4);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:20px">Government Optimized Transport Operations</div>
+    <p class="a3" style="font-size:clamp(15px,1.8vw,20px);color:rgba(255,255,255,0.65);max-width:600px;line-height:1.5;margin-bottom:36px">A unified platform for government planners to identify transit deserts, score interventions, and prioritize route investments by equity and social impact.</p>
+    <div class="a4" style="display:flex;align-items:flex-start;gap:48px">
+      <div style="display:flex;gap:32px">
+        <div><div id="cs1" style="font-size:clamp(28px,3.5vw,44px);font-weight:700;color:#fff">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.06em">Adults affected</div></div>
+        <div><div id="cs2" style="font-size:clamp(28px,3.5vw,44px);font-weight:700;color:#fff">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.06em">Avg transit time</div></div>
+        <div><div id="cs3" style="font-size:clamp(28px,3.5vw,44px);font-weight:700;color:#fff">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.06em">AI route proposals</div></div>
+      </div>
+      <div style="border-left:1px solid rgba(255,255,255,0.1);padding-left:32px">
+        <div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Team</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.9">Eric Lin<br>Matthew Lin<br>Zachary Lin<br>Weihao Wu</div>
+      </div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:32px;left:8%;font-size:11px;color:var(--muted)">Piloted in Troy, NY · Capital District · Scalable nationwide</div>
+</div>
+
+<!-- ── 01: PROBLEM & VALIDATION ──────────────────────────────── -->
+<div class="slide" id="s1">
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">01 · Problem &amp; Validation</div>
+    <div class="slide-title a2">14,000 adults. A transit system that <span>leaves them behind.</span></div>
+    <div class="three-col a3" style="margin-bottom:20px">
+      <div class="persona">
+        <span class="tag d">No Transit</span>
+        <div class="persona-name">Maria, North Greenbush</div>
+        <div class="persona-detail">Enrolled in a GED program at Capital District EOC in Troy. The nearest CDTA bus stop is <strong style="color:var(--text)">3.1 miles from her home</strong> — there is no bus she can even board. A rideshare costs $22 round-trip, ~20% of her weekly income.</div>
+      </div>
+      <div class="persona">
+        <span class="tag d">Unreachable Stop</span>
+        <div class="persona-name">James, Castleton-on-Hudson</div>
+        <div class="persona-detail">Enrolled at Questar III BOCES in Castleton. The nearest bus stop is <strong style="color:var(--text)">5.2 miles from the facility</strong> — no way to reach it on foot. Program requires 3 days/week attendance. He dropped out after month one.</div>
+      </div>
+      <div class="persona">
+        <span class="tag p">Hidden Barrier</span>
+        <div class="persona-name">Aisha, Schenectady</div>
+        <div class="persona-detail">Traveling to adult ed programs in Troy. A Route 370 stop is <strong style="color:var(--text)">0.2 miles from her door</strong> — every planning tool marks her "served." But the ride to Troy takes 65 min. Her round trip is 2+ hours.</div>
+      </div>
+    </div>
+    <p class="a4" style="font-size:clamp(14px,1.6vw,18px);color:var(--muted);margin-bottom:12px">Transit deserts disproportionately cut off low-income, car-free adults from education and workforce programs. These three stories are what that systemic failure looks like on the ground. GoTo is built for <strong style="color:var(--text)">CDTA planners</strong> and <strong style="color:var(--text)">adult ed administrators</strong> who need data to act.</p>
+    <div class="a4" style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+      <div style="background:rgba(1,105,111,0.08);border:1px solid rgba(1,105,111,0.25);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--muted);line-height:1.5">
+        <strong style="color:var(--teal)">Why GoTo is unique:</strong> Google Maps shows existing routes — it doesn’t identify gaps or score interventions. CDTA’s internal tools are proprietary. GoTo is the only open, public-facing platform that identifies deserts, scores proposed fixes, and quantifies equity impact in one view.
+      </div>
+      <div style="font-size:11px;color:var(--muted);opacity:0.7;align-self:flex-end;white-space:nowrap">Sources: Census ACS 5-yr · CDTA schedules · NYSED facility data</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 02: USE OF OPEN DATA ──────────────────────────────────── -->
+<div class="slide" id="s2">
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">02 · Use of Open Data</div>
+    <div class="slide-title a2">Four open datasets.<br><span>One unified view.</span></div>
+    <div class="two-col a3">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:4px">CDTA Published Schedules</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">6 real routes (85, 87, 22, 370, 286, 289), 51 stops with GPS coordinates, headways, and terminus data. Used to compute walk + wait + ride transit times.</div>
+        </div>
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:4px">Census ACS 5-Year Estimates</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Car-free household percentages and median income by census tract — used to identify equity need and weight the route scoring model.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:4px">NYSED Facility Locations</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">14 adult education sites across the Capital District — addresses geocoded and validated against CDTA stop proximity for desert classification.</div>
+        </div>
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:4px">OpenStreetMap via OSRM</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Real road-following geometry for all 7 proposed routes — pre-fetched at build time so routes trace actual streets, not straight lines.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 03: VALUE & IMPACT ────────────────────────────────────── -->
+<div class="slide" id="s3">
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column;align-items:center;text-align:center">
+    <div class="crit-num a1">03 · Value &amp; Impact</div>
+    <div class="slide-title a2">This is happening everywhere.<br><span>Here's how bad it actually is.</span></div>
+    <div class="three-col a3" style="max-width:1000px;margin-bottom:20px">
+      <div class="card red"><div class="card-num" style="color:#dd6974" id="p1">0</div><div class="card-label">Adults facing 45+ min transit journeys to their nearest adult ed site — by actual bus travel time</div></div>
+      <div class="card orange"><div class="card-num" style="color:#fdab43" id="p2">0</div><div class="card-label">Average transit time (walk + wait + ride) for underserved residents — vs. 12 min by car</div></div>
+      <div class="card teal"><div class="card-num" style="color:#4f98a3" id="p3">0</div><div class="card-label">Confirmed desert zones with no viable transit — Rensselaer, Saratoga &amp; Schoharie counties</div></div>
+    </div>
+    <p class="a4" style="font-size:clamp(14px,1.6vw,18px);color:var(--muted);max-width:780px">Locally: closes access gaps for ~14,000 adults in the Capital District. Statewide &amp; nationally: the model is geography-agnostic — any GTFS feed + Census ACS data powers a GoTo deployment in any city or county in the US.</p>
+  </div>
+</div>
+
+<!-- ── 04: PRESENTATION & TEAMWORK ──────────────────────────── -->
+<div class="slide dark-bg" id="s4">
+  <div class="cover-grid"></div>
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">04 · Presentation &amp; Teamwork</div>
+    <div class="slide-title a2">What we built — and <span>how we built it</span> — in one hackathon day.</div>
+    <div class="two-col a3">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Interactive GIS map</strong> with layered overlays — transit deserts, equity heatmap, destinations, real CDTA routes, and AI proposals</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Transit-time classification</strong> — access scored by actual walk + wait + ride time, not just distance to the nearest stop</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>AI route scoring engine</strong> — multi-factor model weighing need, cost efficiency, destination proximity, and network overlap</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Before / After simulation</strong> — toggle proposed routes on/off and watch KPIs update live</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Real road geometry</strong> — 7 proposed routes follow actual streets via OSRM, pre-fetched at build time</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Gemini analysis panel</strong> — plain-language insight per facility, tied to real equity data</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Zero backend</strong> — fully static HTML/JS, loads instantly, works anywhere</div></div>
+        <div class="bullet-row"><div class="bullet-dot"></div><div class="bullet-text"><strong>Built entirely with Perplexity Computer</strong> — research, code, data, and deployment in one session</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 05: USE OF AI ─────────────────────────────────────────── -->
+<div class="slide" id="s5">
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">05 · Use of AI</div>
+    <div class="slide-title a2">AI isn't a label here.<br><span>It's doing real work.</span></div>
+    <div class="two-col a3">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:6px">Route Scoring Engine</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Multi-factor scoring model computes a 0–100 score per proposed route using: population need, car-free %, destination proximity (hospitals, schools, jobs within 2mi), cost efficiency ($/mile), and network overlap penalty. Fully explainable — every point is shown to the user.</div>
+        </div>
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:6px">Gemini Analysis Panel <span style="font-size:10px;background:rgba(1,105,111,0.2);color:var(--teal);border-radius:4px;padding:2px 6px;font-weight:700;vertical-align:middle;margin-left:4px">IN PROGRESS</span></div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Currently rule-based text generation using real facility data. Architecture is live-API ready — wiring Google Gemini to generate genuinely contextual insights per location. Prompt: facility access data + equity metrics → 2-sentence plain-language recommendation.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:6px">Perplexity Computer</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Used throughout the build: web search to find real CDTA data, Census ACS queries, Python to compute transit-time classifications, OSRM API to fetch road geometry, and code generation for the entire platform. One AI tool, end-to-end.</div>
+        </div>
+        <div class="card" style="border-color:rgba(218,113,1,0.3);background:rgba(218,113,1,0.05)">
+          <div style="font-size:13px;font-weight:700;color:#fdab43;margin-bottom:6px">Next: Live Gemini + Foot Traffic</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Replacing rule-based insights with live Gemini API calls. Adding pedestrian foot traffic data to direct route proposals toward corridors people are already using.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 06: DEMONSTRATION ─────────────────────────────────────── -->
+<div class="slide" id="s6" style="background:#000;flex-direction:column">
+  <div style="height:48px;background:var(--teal);display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0">
+    <svg width="20" height="20" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="12" stroke="white" stroke-width="1.5" stroke-opacity="0.35"/><path d="M13 5C9.69 5 7 7.69 7 11c0 4.67 6 11 6 11s6-6.33 6-11c0-3.31-2.69-6-6-6z" fill="white" fill-opacity="0.9"/><circle cx="13" cy="11" r="2.5" fill="#01696F"/></svg>
+    <div>
+      <div style="font-weight:700;font-size:14px;color:#fff">06 · Demonstration — GoTo Live</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.65)">Capital District · CDTA + Census + NYSED + OpenStreetMap</div>
+    </div>
+  </div>
+  <div style="flex:1;position:relative">
+    <iframe src="https://sites.pplx.app/sites/proxy/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcmVmaXgiOiJ3ZWIvZGlyZWN0LWZpbGVzL2NvbXB1dGVyLzJhNGFhODU4LTNiZjUtNDc3ZS1iMDVjLTFmZTg0ZmE4M2QzOC9odi1hY2Nlc3MtbWFwLyIsInNpZCI6IjJhNGFhODU4LTNiZjUtNDc3ZS1iMDVjLTFmZTg0ZmE4M2QzOCIsImV4cCI6MTc3NTQwOTM3OH0.jHfvTMe200wPH--8vCrMYGL5YGSo868f1nfwUFMaoKY/web/direct-files/computer/2a4aa858-3bf5-477e-b05c-1fe84fa83d38/hv-access-map/index.html"
+      style="width:100%;height:100%;border:none;display:block" title="GoTo Platform" allowfullscreen loading="lazy"></iframe>
+
+  </div>
+</div>
+
+<!-- ── 07: TEAM COLLABORATION ────────────────────────────────── -->
+<div class="slide dark-bg" id="s7">
+  <div class="cover-grid"></div>
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">07 · Team Collaboration</div>
+    <div class="slide-title a2">Four people. <span>One platform.</span> Built in a day.</div>
+    <div class="two-col a3" style="margin-bottom:24px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:6px">Eric Lin — Platform Lead</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Coordinated overall architecture, AI scoring engine design, data pipeline, and deployment strategy using Perplexity Computer throughout.</div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:6px">Matthew Lin — Data & Research</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">CDTA route research, Census ACS data collection, transit-time methodology, and facility dataset validation.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:6px">Zachary Lin — Frontend & UX</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Map layer design, sidebar UI, popup content, presentation slides, and visual QA across the platform.</div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--teal);margin-bottom:6px">Weihao Wu — Scoring & Analysis</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Route scoring model, destination proximity algorithm, overlap detection, cost-efficiency analysis, and before/after simulation.</div>
+        </div>
+      </div>
+    </div>
+    <p class="a4" style="font-size:clamp(14px,1.6vw,17px);color:var(--muted)">We split the problem into four parallel tracks — data, scoring, UI, and presentation — and integrated continuously throughout the day using a shared codebase and Perplexity Computer as a common tool.</p>
+  </div>
+</div>
+
+<!-- ── 08: FUTURE PLANS ──────────────────────────────────────── -->
+<div class="slide" id="s8">
+  <div class="pad" style="flex:1;justify-content:center;display:flex;flex-direction:column">
+    <div class="crit-num a1">08 · Future Plans</div>
+    <div class="slide-title a2">Built in a day. <span>Designed to scale.</span></div>
+    <div class="two-col a3">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card teal">
+          <div style="font-size:13px;font-weight:700;color:#4f98a3;margin-bottom:4px">01 · Live Gemini API <span style="font-size:10px;background:rgba(1,105,111,0.2);color:var(--teal);border-radius:4px;padding:2px 6px;font-weight:700;vertical-align:middle;margin-left:4px">IN PROGRESS</span></div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Replace rule-based analysis with real-time Gemini insights per facility — contextual, plain-language, and current.</div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">02 · Foot Traffic Data</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Direct route proposals to corridors where demand already exists — demand-driven, not assumption-driven.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">03 · Travel-Time Heatmap</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">Replace the distance overlay with actual transit travel-time — already revealed Schenectady sites with a hidden 65-min barrier.</div>
+        </div>
+        <div class="card green">
+          <div style="font-size:13px;font-weight:700;color:#6daa45;margin-bottom:4px">04 · Statewide &amp; National Expansion</div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.5">The model is geography-agnostic. Any GTFS feed + Census ACS data = a GoTo deployment. Troy today. Any city tomorrow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<div class="counter" id="counter">1 / 9</div>
+<div class="nav">
+  <button onclick="prevSlide()">←</button>
+  <button onclick="nextSlide()">→</button>
+</div>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+const total=slides.length;
+let cur=0,busy=false;
+
+function goTo(idx){
+  if(busy||idx===cur)return;
+  busy=true;
+  const old=slides[cur],nxt=slides[idx];
+  old.classList.remove('anim-ready');
+  old.classList.add('exit');
+  setTimeout(()=>old.classList.remove('active','exit'),430);
+  cur=idx;
+  nxt.classList.add('active');
+  setTimeout(()=>nxt.classList.add('anim-ready'),30);
+  setTimeout(()=>{busy=false;onEnter(idx);},480);
+  updateUI();
+}
+function nextSlide(){if(cur<total-1)goTo(cur+1);}
+function prevSlide(){if(cur>0)goTo(cur-1);}
+function updateUI(){
+  document.getElementById('counter').textContent=(cur+1)+' / '+total;
+  document.getElementById('progress').style.width=((cur+1)/total*100)+'%';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' ')nextSlide();
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')prevSlide();
+});
+
+function animCount(el,target,suffix,dur=1400){
+  if(!el)return;
+  if(target<=5){
+    el.style.opacity='0';el.textContent=target+suffix;
+    setTimeout(()=>{el.style.transition='opacity 0.6s';el.style.opacity='1';},100);return;
+  }
+  const sv=0,start=performance.now();
+  const tick=now=>{
+    const t=Math.min((now-start)/dur,1),e=1-Math.pow(1-t,3);
+    const v=Math.round(sv+(target-sv)*e);
+    el.textContent=(target>=10000?'~'+Math.round(v/1000)+'k':v+suffix);
+    if(t<1)requestAnimationFrame(tick);
+    else el.textContent=(target>=10000?'~'+(target/1000)+'k':target+suffix);
+  };
+  requestAnimationFrame(tick);
+}
+
+function animFlow(){
+  ['f1','f2','f3','f4'].forEach((id,i)=>setTimeout(()=>{const e=document.getElementById(id);if(e)e.classList.add('vis');},180+i*160));
+}
+
+function setImpact(s){
+  const after=s==='after';
+  document.getElementById('btn-before').classList.toggle('active',!after);
+  document.getElementById('btn-after').classList.toggle('active',after);
+  const d=after?{des:'0',pop:'~4k',time:'28 min',dd:'↓ 2 eliminated',dp:'↓ 10k fewer',dt:'↓ 24 min saved'}
+                :{des:'2',pop:'~14k',time:'52 min',dd:'',dp:'',dt:''};
+  ['des','pop','time'].forEach(k=>{
+    document.getElementById('iv-'+k).textContent=d[k];
+    document.getElementById('id-'+k).textContent=d['d'+k[0]];
+    document.getElementById('id-'+k).style.color=after?'#6daa45':'';
+    document.getElementById('ic-'+k).classList.toggle('imp',after);
+  });
+}
+
+function onEnter(idx){
+  if(idx===0)setTimeout(()=>{
+    animCount(document.getElementById('cs1'),14000,'k',1600);
+    animCount(document.getElementById('cs2'),52,' min',1200);
+    animCount(document.getElementById('cs3'),7,'',800);
+  },400);
+  if(idx===3)setTimeout(()=>{
+    animCount(document.getElementById('p1'),14000,'k');
+    animCount(document.getElementById('p2'),52,' min',1000);
+    animCount(document.getElementById('p3'),2,'',600);
+  },300);
+}
+
+slides[0].classList.add('anim-ready');
+updateUI();onEnter(0);
+</script>
+<script data-pplx-inline-edit>
+(function(){
+  if(window===window.top)return;
+  function inlineAll(orig,clone){
+    if(orig.nodeType!==1)return;
+    try{
+      var cs=getComputedStyle(orig);
+      var t='';
+      for(var i=0;i<cs.length;i++){t+=cs[i]+':'+cs.getPropertyValue(cs[i])+';';}
+      clone.style.cssText=t;
+    }catch(e){}
+    var oc=orig.children,cc=clone.children;
+    for(var j=0;j<oc.length&&j<cc.length;j++){inlineAll(oc[j],cc[j]);}
+  }
+  function stripExternal(clone){
+    var imgs=clone.querySelectorAll('img');
+    for(var i=0;i<imgs.length;i++){
+      var s=imgs[i].getAttribute('src');
+      if(s&&!s.startsWith('data:'))imgs[i].removeAttribute('src');
+    }
+    var all=clone.querySelectorAll('*');
+    for(var i=0;i<all.length;i++){
+      var st=all[i].style.cssText;
+      if(st&&st.indexOf('url(')>=0){
+        all[i].style.cssText=st.replace(/url\(["']?(?!data:)[^)"']*["']?\)/gi,'none');
+      }
+    }
+  }
+  window.addEventListener('message',function(e){
+    if(!e.data||e.data.type!=='INLINE_EDIT_CAPTURE_REQUEST')return;
+    var scrollX=window.scrollX||window.pageXOffset||0;
+    var scrollY=window.scrollY||window.pageYOffset||0;
+    var w=window.innerWidth,h=window.innerHeight;
+    try{
+      var clone=document.documentElement.cloneNode(true);
+      var rm=clone.querySelectorAll('script,link[rel="stylesheet"],style');
+      for(var i=0;i<rm.length;i++){rm[i].remove();}
+      inlineAll(document.documentElement,clone);
+      stripExternal(clone);
+      var html=new XMLSerializer().serializeToString(clone);
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
+        +'<foreignObject width="100%" height="100%">'
+        +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px;overflow:hidden">'
+        +'<div style="transform:translate(-'+scrollX+'px,-'+scrollY+'px);transform-origin:top left">'
+        +html+'</div></div></foreignObject></svg>';
+      var svgUrl='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+      var img=new Image();
+      img.onload=function(){
+        var c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0);
+        window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:c.toDataURL('image/png'),scrollX:scrollX,scrollY:scrollY},'*');
+      };
+      img.onerror=function(){
+        window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:null,scrollX:scrollX,scrollY:scrollY},'*');
+      };
+      img.src=svgUrl;
+    }catch(err){
+      window.parent.postMessage({type:'INLINE_EDIT_SCREENSHOT_RESULT',dataUrl:null,scrollX:scrollX,scrollY:scrollY},'*');
+    }
+  });
+})();
+</script></body>
+</html>
