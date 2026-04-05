@@ -27,9 +27,12 @@ Adds cost efficiency scoring. Each route gets an estimated annual operating cost
 Analyzes each proposed route against the existing CDTA network and tags it as one of: `none` (new corridor), `extension` (extends an existing route), `frequency` (adds runs to an existing route), or `parallel` (runs alongside an existing route). Applies a score penalty accordingly: -3 for extensions/frequency boosts, -6 for parallel corridors. Displays the overlap status in popups and sidebar cards.
 
 ### 5. `inject_road_paths.py`
-Calls the [OSRM public routing API](https://router.project-osrm.org) once per proposed route to fetch real road-following geometry (200–740 coordinate points per route). Hardcodes the results as a `roadPaths` object directly in the HTML so routes trace actual streets rather than straight lines. Results are also saved to `route_paths.json` as a cache.
+Calls the [OSRM public routing API](https://router.project-osrm.org) once per proposed route to fetch real road-following geometry (200–740 coordinate points per route). Hardcodes the results as a `roadPaths` object directly in the HTML so routes trace actual streets rather than straight lines. Results are also saved to `route_paths.json` as a cache — so if you re-run the script, it will re-fetch fresh geometry from OSRM and overwrite the cache.
 
 > **Requires internet access** to call the OSRM API. If OSRM is unreachable, the script falls back gracefully and routes remain as straight lines.
+
+### `route_paths.json`
+The cached output of `inject_road_paths.py` — contains the pre-fetched OSRM road geometry for all 7 proposed routes as arrays of `[lat, lng]` coordinate pairs. Included in the repo so the geometry is available for reference even without re-running the script. Keys are `s1` through `s7`, each with a `path` array, point count (`pts`), and road distance in miles (`dist_mi`).
 
 ### 6. `inject_transit_times.py`
 Computes transit access times for all 14 adult education facilities using real CDTA route data. For each facility, calculates: walk time to nearest stop (at 20 min/mile), average wait time (half the route headway), and ride time to the nearest hub (distance ÷ average route speed). Reclassifies each facility's access status (`served` / `partial` / `desert`) based on total transit time rather than raw distance, and adds a `transitTimeMins` field to each facility object.
