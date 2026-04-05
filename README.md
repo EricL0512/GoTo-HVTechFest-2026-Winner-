@@ -95,7 +95,7 @@ GoTo-Transit-Planner/
 
 | Dataset | Source | Used for |
 |---------|--------|----------|
-| CDTA Route Schedules | [cdta.org/schedules](https://www.cdta.org/schedules) | Stop locations, headways, route polylines |
+| CDTA Route Schedules | [cdta.org/schedules](https://www.cdta.org/routes-and-schedules) | Stop locations, headways, route polylines |
 | Census ACS 5-Year | [census.gov](https://data.census.gov) | Car-free household %, median income |
 | NYSED Facility Directory | [nysed.gov](https://www.nysed.gov) | Adult education facility locations |
 | OpenStreetMap via OSRM | [router.project-osrm.org](https://router.project-osrm.org) | Road-following route geometry |
