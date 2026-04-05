@@ -66,7 +66,7 @@ Every part of the stack was produced in a single hackathon session:
 ## Repo Structure
 
 ```
-GoTo-HVTechFest-2026-Winner-/
+GoTo-Transit-Planner/
 ├── index.html                  ← redirects to app/
 ├── README.md                   ← you are here
 ├── app/
