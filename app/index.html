@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HV Transit Planner — Adult Education Access Platform</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="light"]{
+  --bg:#f4f3ef;--surface:#ffffff;--surface-2:#f9f8f5;--border:#dcdad5;--divider:#e8e6e1;
+  --text:#28251d;--text-muted:#7a7974;--text-faint:#bab9b4;
+  --teal:#01696f;--teal-hover:#0c4e54;--teal-light:#e0f0f1;--teal-mid:#b2d8db;
+  --red:#a13544;--red-light:#fde8eb;--orange:#da7101;--orange-light:#fef3e7;
+  --green:#437a22;--green-light:#eaf3e3;--blue:#006494;--blue-light:#e0eef6;
+  --purple:#7a39bb;--purple-light:#f0eaf8;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.07);--shadow-md:0 4px 16px rgba(0,0,0,0.09);--shadow-lg:0 12px 40px rgba(0,0,0,0.13);
+  --radius:6px;--radius-lg:10px;--transition:180ms cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="dark"]{
+  --bg:#131211;--surface:#1c1b19;--surface-2:#201f1d;--border:#313030;--divider:#272624;
+  --text:#cdccca;--text-muted:#797876;--text-faint:#4a4948;
+  --teal:#4f98a3;--teal-hover:#227f8b;--teal-light:#1e3135;--teal-mid:#2d4b4e;
+  --red:#dd6974;--red-light:#3a2128;--orange:#fdab43;--orange-light:#3a2e1c;
+  --green:#6daa45;--green-light:#1e2e15;--blue:#5591c7;--blue-light:#1a2a38;
+  --purple:#a86fdf;--purple-light:#2a1e3e;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.3);--shadow-md:0 4px 16px rgba(0,0,0,0.4);--shadow-lg:0 12px 40px rgba(0,0,0,0.5);
+}
+html,body{height:100%;max-height:100%;font-family:'General Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;overflow:hidden}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.header{height:52px;background:var(--teal);display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0;z-index:1000;position:relative}
+.logo{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none}
+.logo svg{width:26px;height:26px;flex-shrink:0}
+.logo-name{font-size:14px;font-weight:700;letter-spacing:-0.01em;line-height:1.1}
+.logo-sub{font-size:10px;opacity:0.75;font-weight:400}
+.header-sep{width:1px;height:28px;background:rgba(255,255,255,0.2);flex-shrink:0}
+
+/* KPI pills */
+.kpis{display:flex;gap:3px;margin-right:auto}
+.kpi{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:20px;padding:4px 12px;display:flex;align-items:center;gap:6px}
+.kpi-val{font-size:15px;font-weight:700;color:#fff}
+.kpi-label{font-size:10px;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.05em}
+.kpi.bad .kpi-val{color:#ffc4c4}
+.kpi.warn .kpi-val{color:#ffe5b4}
+.kpi.good .kpi-val{color:#b7f5c4}
+
+/* header right controls */
+.hcontrols{display:flex;align-items:center;gap:8px}
+.hbtn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:var(--radius);padding:5px 11px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;transition:background var(--transition);font-family:inherit}
+.hbtn:hover{background:rgba(255,255,255,0.25)}
+.hbtn.active{background:rgba(255,255,255,0.3);border-color:rgba(255,255,255,0.5)}
+#theme-btn{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);cursor:pointer}
+
+/* ── MAIN LAYOUT ─────────────────────────────────────────────────── */
+.app{display:flex;height:calc(100% - 52px);overflow:hidden}
+
+/* ── LEFT PANEL ─────────────────────────────────────────────────── */
+.panel{width:300px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:100}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ptab{flex:1;padding:10px 4px;font-size:10.5px;font-weight:600;text-align:center;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:all var(--transition);text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;overflow:hidden}
+.ptab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.ptab:hover:not(.active){color:var(--text);background:var(--surface-2)}
+.panel-body{flex:1;overflow-y:auto;display:none}
+.panel-body.active{display:block}
+
+/* Panel sections */
+.psec{padding:12px 14px;border-bottom:1px solid var(--divider)}
+.psec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:8px}
+
+/* Layer toggles */
+.layer-grid{display:flex;flex-direction:column;gap:5px}
+.layer-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.layer-info{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500}
+.layer-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.layer-swatch.circle{border-radius:50%}
+.toggle{width:32px;height:18px;background:var(--border);border-radius:9px;cursor:pointer;position:relative;transition:background var(--transition);flex-shrink:0}
+.toggle.on{background:var(--teal)}
+.toggle::after{content:'';width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform var(--transition);box-shadow:var(--shadow-sm)}
+.toggle.on::after{transform:translateX(14px)}
+
+/* Facility list */
+.fac-item{padding:10px 14px;border-bottom:1px solid var(--divider);cursor:pointer;transition:background var(--transition)}
+.fac-item:hover{background:var(--teal-light)}
+.fac-item.active{background:var(--teal-light);border-left:3px solid var(--teal)}
+.fac-name{font-size:12px;font-weight:600;margin-bottom:3px}
+.fac-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.tag.desert{background:var(--red-light);color:var(--red)}
+.tag.served{background:var(--green-light);color:var(--green)}
+.tag.partial{background:var(--orange-light);color:var(--orange)}
+.tag.county{background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)}
+.fac-dist{font-size:11px;color:var(--text-muted)}
+
+/* Destination list */
+.dest-item{padding:8px 14px;border-bottom:1px solid var(--divider);cursor:pointer;transition:background var(--transition);display:flex;align-items:center;gap:8px}
+.dest-item:hover{background:var(--surface-2)}
+.dest-icon{width:28px;height:28px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.dest-info{flex:1;min-width:0}
+.dest-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dest-sub{font-size:11px;color:var(--text-muted)}
+
+/* AI suggestions panel */
+.suggest-item{padding:11px 14px;border-bottom:1px solid var(--divider)}
+.suggest-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.suggest-title{font-size:12px;font-weight:700}
+.suggest-score{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.score-critical{background:var(--red-light);color:var(--red)}
+.score-high{background:var(--orange-light);color:var(--orange)}
+.score-medium{background:var(--blue-light);color:var(--blue)}
+.suggest-body{font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:6px}
+.suggest-tags{display:flex;gap:4px;flex-wrap:wrap}
+.suggest-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted)}
+.suggest-type{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-bottom:4px}
+.type-bus{background:#e0eef6;color:#006494}
+.type-shuttle{background:#f0eaf8;color:#7a39bb}
+.type-stop{background:#eaf3e3;color:#437a22}
+[data-theme="dark"] .type-bus{background:#1a2a38;color:#5591c7}
+[data-theme="dark"] .type-shuttle{background:#2a1e3e;color:#a86fdf}
+[data-theme="dark"] .type-stop{background:#1e2e15;color:#6daa45}
+
+/* ── MAP ────────────────────────────────────────────────────────── */
+.map-wrap{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+/* CSS fullscreen — expands map-wrap to cover viewport */
+.map-wrap.is-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:9999!important;border-radius:0!important}
+.map-wrap.is-fullscreen #map{width:100%!important;height:100%!important}
+
+/* Before/After toggle bar */
+.sim-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:800;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:5px;display:flex;gap:4px;box-shadow:var(--shadow-md)}
+.sim-btn{padding:6px 16px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);transition:all var(--transition);font-family:inherit;border:none;background:none}
+.sim-btn.active{background:var(--teal);color:#fff}
+.sim-label{position:absolute;top:50px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.3s}
+.sim-label.show{opacity:1}
+
+/* Gemini insight panel (bottom of map) */
+.insight-bar{position:absolute;bottom:0;left:0;right:0;z-index:800;background:var(--surface);border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:flex-start;gap:10px;transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);max-height:160px}
+.insight-bar.open{transform:translateY(0)}
+.insight-icon{width:32px;height:32px;border-radius:var(--radius);background:var(--teal-light);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.insight-icon svg{width:16px;height:16px;color:var(--teal)}
+.insight-content{flex:1;min-width:0}
+.insight-title{font-size:12px;font-weight:700;margin-bottom:3px}
+.insight-text{font-size:12px;color:var(--text-muted);line-height:1.55}
+.insight-close{width:24px;height:24px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);flex-shrink:0;background:none;border:none}
+.insight-close:hover{background:var(--surface-2);color:var(--text)}
+.gemini-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--teal);margin-bottom:4px}
+.gemini-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+
+/* Map legend bottom-right */
+.map-legend{position:absolute;bottom:12px;right:10px;z-index:700;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;box-shadow:var(--shadow-sm);min-width:150px}
+.ml-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:7px}
+.ml-row{display:flex;align-items:center;gap:7px;font-size:11px;margin-bottom:5px}
+.ml-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ml-line{width:16px;height:3px;border-radius:2px;flex-shrink:0}
+.ml-sq{width:14px;height:9px;border-radius:2px;opacity:0.5;flex-shrink:0}
+
+/* Equity score bar */
+.equity-bar{height:6px;border-radius:3px;background:linear-gradient(to right,#437a22,#da7101,#a13544);position:relative;margin:6px 0 2px}
+.equity-ptr{position:absolute;top:-3px;width:3px;height:12px;background:var(--text);border-radius:1px;transform:translateX(-50%);transition:left 0.4s}
+.equity-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted)}
+
+/* Custom popup */
+.leaflet-popup-content-wrapper{border-radius:var(--radius-lg)!important;box-shadow:var(--shadow-lg)!important;padding:0!important;overflow:hidden!important;border:1px solid var(--border)}
+.leaflet-popup-content{margin:0!important;width:260px!important}
+.popup-head{padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#fff}
+.popup-head.desert{background:var(--red)}
+.popup-head.served{background:var(--green)}
+.popup-head.partial{background:var(--orange)}
+.popup-head.hospital{background:#006494}
+.popup-head.school{background:#7a39bb}
+.popup-head.jobs{background:#964219}
+.popup-head.suggest{background:var(--teal)}
+.popup-body{padding:12px;background:var(--surface)}
+.popup-title{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)}
+.popup-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--divider);font-size:11px}
+.popup-row:last-child{border-bottom:none}
+.popup-lbl{color:var(--text-muted)}
+.popup-val{font-weight:600;color:var(--text)}
+.popup-val.red{color:var(--red)}
+.popup-val.green{color:var(--green)}
+.popup-val.orange{color:var(--orange)}
+.popup-ai{padding:9px 12px;background:var(--teal-light);border-top:1px solid var(--teal-mid);font-size:11px;color:var(--teal-hover);line-height:1.55}
+.popup-ai-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--teal);margin-bottom:3px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Route lines (before/after) */
+.route-line-before{stroke:#4B9BFF;stroke-width:3;stroke-dasharray:6 4;opacity:0.7}
+.route-line-after{stroke:#437a22;stroke-width:4;opacity:0.9}
+
+/* Suggestion marker pulse */
+@keyframes suggestPulse{0%,100%{r:14;opacity:0.4}50%{r:18;opacity:0.15}}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <a class="logo" href="#">
+    <svg viewBox="0 0 26 26" fill="none" aria-label="HV Transit Planner">
+      <circle cx="13" cy="13" r="12" stroke="white" stroke-width="1.5" stroke-opacity="0.35"/>
+      <path d="M13 5C9.69 5 7 7.69 7 11c0 4.67 6 11 6 11s6-6.33 6-11c0-3.31-2.69-6-6-6z" fill="white" fill-opacity="0.9"/>
+      <circle cx="13" cy="11" r="2.5" fill="#01696F"/>
+      <path d="M4 20l3.5-3.5M18.5 16.5L22 20" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.5"/>
+    </svg>
+    <div>
+      <div class="logo-name">HV Transit Planner</div>
+      <div class="logo-sub">Transit Desert Intervention Platform</div>
+    </div>
+  </a>
+  <div class="header-sep"></div>
+  <div class="kpis" id="kpi-bar">
+    <div class="kpi bad"><span class="kpi-val" id="k-deserts">2</span><span class="kpi-label">Deserts</span></div>
+    <div class="kpi warn"><span class="kpi-val" id="k-partial">3</span><span class="kpi-label">Limited</span></div>
+    <div class="kpi good"><span class="kpi-val" id="k-served">9</span><span class="kpi-label">Served</span></div>
+    <div class="kpi"><span class="kpi-val" id="k-pop">~18k</span><span class="kpi-label">In Deserts</span></div>
+    <div class="kpi"><span class="kpi-val" id="k-time">38 min</span><span class="kpi-label">Avg Access Time</span></div>
+    <div class="kpi"><span class="kpi-val" id="k-ai">7</span><span class="kpi-label">AI Suggestions</span></div>
+  </div>
+  <div class="hcontrols">
+    <button class="hbtn" id="before-after-toggle" onclick="toggleBeforeAfter()">Before / After</button>
+    <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<div class="app">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="panel-tabs">
+      <div class="ptab active" onclick="switchTab('layers',this)">Layers</div>
+      <div class="ptab" onclick="switchTab('facilities',this)">Sites</div>
+      <div class="ptab" onclick="switchTab('destinations',this)">Destinations</div>
+      <div class="ptab" onclick="switchTab('ai',this)">AI Routes</div>
+    </div>
+
+    <!-- LAYERS TAB -->
+    <div class="panel-body active" id="tab-layers">
+      <div class="psec">
+        <div class="psec-title">Transit & Education</div>
+        <div class="layer-grid">
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#437a22;border:2px solid #2d5a14"></div>Adult Ed (Served)</div><div class="toggle on" id="tog-served" onclick="toggleLyr('served',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#a13544;border:2px solid #7a1f30"></div>Adult Ed (Desert)</div><div class="toggle on" id="tog-desert" onclick="toggleLyr('desert',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#da7101;border:2px solid #8a4000"></div>Adult Ed (Limited)</div><div class="toggle on" id="tog-partial" onclick="toggleLyr('partial',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-line" style="width:16px;height:3px;border-radius:2px;background:#1A6FE0;opacity:0.8"></div>CDTA Route Lines</div><div class="toggle on" id="tog-cdtaLines" onclick="toggleLyr('cdtaLines',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#4B9BFF"></div>Transit Stops</div><div class="toggle on" id="tog-stops" onclick="toggleLyr('stops',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-line" style="width:16px;height:3px;border-radius:2px;background:#437a22"></div>Walk Radius (½ mi)</div><div class="toggle on" id="tog-radius" onclick="toggleLyr('radius',this)"></div></div>
+        </div>
+      </div>
+      <div class="psec">
+        <div class="psec-title">Equity & Demographics</div>
+        <div class="layer-grid">
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch" style="background:linear-gradient(to right,#437a22,#da7101,#a13544)"></div>Equity Heat Map</div><div class="toggle" id="tog-heat" onclick="toggleLyr('heat',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-sq" style="width:14px;height:9px;border-radius:2px;background:#a13544;opacity:0.4"></div>Transit Deserts</div><div class="toggle on" id="tog-desertzone" onclick="toggleLyr('desertzone',this)"></div></div>
+        </div>
+      </div>
+      <div class="psec">
+        <div class="psec-title">Destinations</div>
+        <div class="layer-grid">
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#006494"></div>Hospitals</div><div class="toggle on" id="tog-hospitals" onclick="toggleLyr('hospitals',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#7a39bb"></div>Schools / Colleges</div><div class="toggle on" id="tog-schools" onclick="toggleLyr('schools',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:#964219"></div>Employment Centers</div><div class="toggle" id="tog-jobs" onclick="toggleLyr('jobs',this)"></div></div>
+        </div>
+      </div>
+      <div class="psec">
+        <div class="psec-title">AI Route Suggestions</div>
+        <div class="layer-grid">
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:var(--teal);border:2px dashed var(--teal)"></div>Suggested Routes</div><div class="toggle on" id="tog-aiRoutes" onclick="toggleLyr('aiRoutes',this)"></div></div>
+          <div class="layer-row"><div class="layer-info"><div class="layer-swatch circle" style="background:var(--teal);opacity:0.5"></div>Priority Zones</div><div class="toggle on" id="tog-priority" onclick="toggleLyr('priority',this)"></div></div>
+        </div>
+      </div>
+
+      <!-- Equity index bar -->
+      <div class="psec">
+        <div class="psec-title">Region Equity Index</div>
+        <div style="font-size:24px;font-weight:700;color:var(--red);margin-bottom:2px">47<span style="font-size:14px;color:var(--text-muted);font-weight:500">/100</span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Capital District avg. — needs intervention</div>
+        <div class="equity-bar"><div class="equity-ptr" style="left:47%"></div></div>
+        <div class="equity-labels"><span>High Equity</span><span>Low Equity</span></div>
+      </div>
+    </div>
+
+    <!-- FACILITIES TAB -->
+    <div class="panel-body" id="tab-facilities">
+      <div id="fac-list"></div>
+    </div>
+
+    <!-- DESTINATIONS TAB -->
+    <div class="panel-body" id="tab-destinations">
+      <div id="dest-list"></div>
+    </div>
+
+    <!-- AI ROUTES TAB -->
+    <div class="panel-body" id="tab-ai">
+      <div class="psec" style="background:var(--teal-light);border-bottom-color:var(--teal-mid)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <div class="gemini-dot"></div>
+          <span style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:0.05em">AI Route Engine</span>
+        </div>
+        <div style="font-size:11px;color:var(--teal-hover);line-height:1.55">Scored using population density, car-free household %, distance to nearest stop, and proximity to adult ed facilities. Click any suggestion to see it on the map.</div>
+      </div>
+      <div id="ai-list"></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-wrap">
+    <div id="map"></div>
+
+    <!-- Fullscreen button -->
+    <button id="fs-btn" onclick="toggleFullscreen()" title="Toggle fullscreen" style="position:absolute;top:10px;right:10px;z-index:1000;width:34px;height:34px;background:#fff;border:2px solid rgba(0,0,0,0.25);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,0.2);padding:0">
+      <svg id="fs-icon-expand" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      <svg id="fs-icon-compress" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+    </button>
+
+    <!-- Before/After label -->
+    <div class="sim-bar">
+      <button class="sim-btn active" id="sim-before" onclick="setSim('before')">Current Network</button>
+      <button class="sim-btn" id="sim-after" onclick="setSim('after')">+ Proposed Routes</button>
+    </div>
+    <div class="sim-label" id="sim-label">Showing proposed route additions</div>
+
+    <!-- Gemini insight bar -->
+    <div class="insight-bar" id="insight-bar">
+      <div class="insight-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--teal)"><circle cx="12" cy="12" r="3"/><path d="M3 12h2M19 12h2M12 3v2M12 19v2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M5.64 18.36l1.42-1.42M16.94 7.06l1.42-1.42"/></svg>
+      </div>
+      <div class="insight-content">
+        <div class="gemini-badge"><div class="gemini-dot"></div>Gemini Analysis</div>
+        <div class="insight-title" id="insight-title"></div>
+        <div class="insight-text" id="insight-text"></div>
+      </div>
+      <button class="insight-close" onclick="closeInsight()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Map legend -->
+    <div class="map-legend">
+      <div class="ml-title">Legend</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#437a22"></div>Served</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#a13544"></div>Transit Desert</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#da7101"></div>Limited Access</div>
+      <div class="ml-row"><div class="ml-line" style="width:16px;height:3px;background:#1A6FE0;border-radius:2px"></div>CDTA Rt 85</div>
+      <div class="ml-row"><div class="ml-line" style="width:16px;height:3px;background:#7a39bb;border-radius:2px"></div>CDTA Rt 87</div>
+      <div class="ml-row"><div class="ml-line" style="width:16px;height:3px;background:#da7101;border-radius:2px"></div>CDTA Rt 22</div>
+      <div class="ml-row"><div class="ml-line" style="width:16px;height:3px;background:#437a22;border-radius:2px"></div>CDTA Rt 370/286</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#4B9BFF;width:7px;height:7px"></div>Bus Stop</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#006494;width:8px;height:8px"></div>Hospital</div>
+      <div class="ml-row"><div class="ml-dot" style="background:#7a39bb;width:8px;height:8px"></div>School/College</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--teal);border:2px dashed var(--teal);background-clip:padding-box"></div>AI Route Suggestion</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DATA
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const facilities = [
+  // ── Troy / Rensselaer County ────────────────────────────────────────
+  {id:0,name:"Capital District EOC (HVCC)",address:"431 River St, Troy, NY 12180",county:"Rensselaer",lat:42.7267,lng:-73.6882,access:"served",noCarPct:31,medIncome:28000,nearestStop:0.1,transitTimeMins:8,stopsWithin1mi:18,pop:6200,
+   routes:["CDTA 85 (5th Ave)","CDTA 22 (Albany–Troy)"],notes:"Major adult ed hub on the Riverfront. Well-served by CDTA Routes 85 and 22 via 4th St corridor. Evening service gaps after 8pm limit night-class access."},
+  {id:1,name:"Troy City School District Adult Ed",address:"475 First St, Troy, NY 12180",county:"Rensselaer",lat:42.7280,lng:-73.6850,access:"served",noCarPct:29,medIncome:31000,nearestStop:0.2,transitTimeMins:10,stopsWithin1mi:14,pop:4800,
+   routes:["CDTA 85","CDTA 22"],notes:"Downtown Troy location benefits from the dense CDTA stop network. GED and ESL programs run evenings — last bus on Rt. 85 departs at 8:45pm, creating a gap for 9pm class dismissals."},
+  {id:2,name:"Literacy Volunteers of Rensselaer Co.",address:"65 First St, Troy, NY 12180",county:"Rensselaer",lat:42.7276,lng:-73.6844,access:"served",noCarPct:33,medIncome:26500,nearestStop:0.15,transitTimeMins:11,stopsWithin1mi:16,pop:3900,
+   routes:["CDTA 85","CDTA 22"],notes:"Co-located with Russell Sage College. Excellent weekday access via CDTA. Saturday service is limited to Route 22 only — a barrier for weekend ESL sessions."},
+  {id:3,name:"Hudson Valley Community College (Main)",address:"80 Vandenburgh Ave, Troy, NY 12180",county:"Rensselaer",lat:42.7054,lng:-73.6760,access:"served",noCarPct:14,medIncome:44000,nearestStop:0.7,transitTimeMins:19,stopsWithin1mi:3,pop:7200,
+   routes:["CDTA 85 (HVCC stop)"],notes:"HVCC sits on suburban campus off Vandenburgh Ave with limited CDTA service. Only Route 85 serves campus directly. No evening service after 6:30pm. 14% of surrounding households are car-free but face a 0.7-mile walk from nearest stop."},
+  {id:4,name:"Questar III BOCES",address:"10 Empire State Blvd, Castleton-on-Hudson",county:"Rensselaer",lat:42.5319,lng:-73.7490,access:"desert",noCarPct:8,medIncome:62000,nearestStop:7.8,transitTimeMins:999,stopsWithin1mi:0,pop:3100,
+   routes:[],notes:"No CDTA service reaches Castleton-on-Hudson. Adults must rely on personal vehicles or irregular carpools. CDTA Route 233 (Albany–Schodack) passes within 3 miles on Rt. 9 but does not extend to Castleton."},
+  {id:5,name:"Lansingburgh CSD Adult Programs",address:"320 7th Ave, Lansingburgh, Troy NY",county:"Rensselaer",lat:42.7835,lng:-73.6759,access:"served",noCarPct:22,medIncome:33000,nearestStop:0.5,transitTimeMins:34,stopsWithin1mi:4,pop:4100,
+   routes:["CDTA 85 (northern terminus)"],notes:"Lansingburgh is the northernmost neighborhood of Troy, served only by Route 85 on 5th/6th Ave. Route 85 runs every 30 min on weekdays but hourly on Saturdays. Adults commuting from surrounding North Greenbush or Brunswick have no transit option."},
+  {id:6,name:"North Greenbush Community Ed",address:"North Greenbush, Rensselaer Co., NY",county:"Rensselaer",lat:42.6820,lng:-73.6340,access:"desert",noCarPct:11,medIncome:58000,nearestStop:2.7,transitTimeMins:73,stopsWithin1mi:0,pop:3400,
+   routes:[],notes:"North Greenbush is a suburban-rural township immediately east of Troy with zero CDTA service. The township has 11% car-free households — roughly 370 adults — with no transit access to any adult education or workforce training site."},
+  // ── Albany County ────────────────────────────────────────────────────
+  {id:7,name:"Capital District EOC — Albany South",address:"20 Warren St, Albany, NY 12202",county:"Albany",lat:42.6452,lng:-73.7555,access:"served",noCarPct:35,medIncome:24000,nearestStop:0.1,transitTimeMins:16,stopsWithin1mi:22,pop:5800,
+   routes:["CDTA 1","CDTA 13","CDTA 22"],notes:"Excellent transit access in downtown Albany. Multiple CDTA routes converge near Warren St. Evening service runs until 11pm on weekdays."},
+  {id:8,name:"Albany High School Adult Ed",address:"700 Washington Ave, Albany, NY 12206",county:"Albany",lat:42.6658,lng:-73.7854,access:"served",noCarPct:38,medIncome:22000,nearestStop:0.1,transitTimeMins:8,stopsWithin1mi:20,pop:6400,
+   routes:["CDTA 12 (Washington Ave)"],notes:"Central Albany location on the densely-served Washington Ave corridor. One of the most transit-accessible adult ed sites in the Capital Region."},
+  // ── Schenectady County ───────────────────────────────────────────────
+  {id:9,name:"Schenectady City School Adult Ed",address:"1 Academy Place, Schenectady, NY 12305",county:"Schenectady",lat:42.8142,lng:-73.9396,access:"partial",noCarPct:28,medIncome:29000,nearestStop:0.2,transitTimeMins:65,stopsWithin1mi:12,pop:5200,
+   routes:["CDTA 370 (Troy–Schenectady)","CDTA 351"],notes:"Well-served by CDTA in downtown Schenectady. Route 370 provides a direct link to Troy. However, the last Route 370 bus leaves Schenectady at 7:15pm — insufficient for most adult ed evening schedules."},
+  {id:10,name:"Mohawk Opportunities (ESOL/GED)",address:"431 Liberty St, Schenectady, NY 12305",county:"Schenectady",lat:42.8118,lng:-73.9404,access:"partial",noCarPct:30,medIncome:27000,nearestStop:0.2,transitTimeMins:68,stopsWithin1mi:13,pop:4800,
+   routes:["CDTA 370","CDTA 351"],notes:"Downtown Schenectady, near Hamilton Hill neighborhood. High car-free population well-served on weekdays. Weekend routes reduced by 60% — a significant access barrier for Saturday language classes."},
+  // ── Saratoga County ──────────────────────────────────────────────────
+  {id:11,name:"Southern Adirondack Ed Center",address:"Wilton Learning Center, Wilton NY",county:"Saratoga",lat:43.1420,lng:-73.7070,access:"desert",noCarPct:7,medIncome:67000,nearestStop:23.7,transitTimeMins:999,stopsWithin1mi:0,pop:2800,
+   routes:[],notes:"Saratoga County has no fixed-route transit south of Saratoga Springs. Adults in Wilton, Gansevoort, and surrounding towns have no viable transit option to reach GED or workforce training programs."},
+  // ── Columbia County ──────────────────────────────────────────────────
+  {id:12,name:"Columbia-Greene Workforce NY",address:"325 Columbia St, Hudson, NY 12534",county:"Columbia",lat:42.2530,lng:-73.7876,access:"desert",noCarPct:18,medIncome:36000,nearestStop:27.2,transitTimeMins:999,stopsWithin1mi:2,pop:2600,
+   routes:["Columbia County Transit (limited)"],notes:"Hudson has Columbia County Transit service but only 3 weekday runs each direction. The Amtrak station 0.9 miles away serves NYC commuters but not local adult learners."},
+  // ── Schoharie County ─────────────────────────────────────────────────
+  {id:13,name:"Capital Region BOCES (Schoharie)",address:"Schoharie, NY",county:"Schoharie",lat:42.6670,lng:-74.3170,access:"desert",noCarPct:9,medIncome:51000,nearestStop:21.7,transitTimeMins:999,stopsWithin1mi:0,pop:2200,
+   routes:[],notes:"Deeply rural location with no public transit. Adults in Schoharie County have no viable transit option to reach GED or workforce training programs — 12 miles to nearest bus stop."}
+];
+
+// ── Real CDTA stops (Capital District) ──────────────────────────────────
+const transitStops = [
+  // Route 85 — 5th Ave / Lansingburgh (N–S through Troy)
+  {lat:42.7267,lng:-73.6882,name:"Riverfront Station — 4th St & Fulton St",route:"85"},
+  {lat:42.7278,lng:-73.6863,name:"Congress Station — 4th St & Congress St",route:"85"},
+  {lat:42.7298,lng:-73.6848,name:"4th St & Ferry St",route:"85"},
+  {lat:42.7325,lng:-73.6832,name:"4th St & Adams St",route:"85"},
+  {lat:42.7365,lng:-73.6818,name:"4th St & Jackson St",route:"85"},
+  {lat:42.7410,lng:-73.6805,name:"4th St & Tyler St",route:"85"},
+  {lat:42.7438,lng:-73.6798,name:"4th St & St. Luke's Ave",route:"85"},
+  {lat:42.7462,lng:-73.6794,name:"Burden Ave & Cross St",route:"85"},
+  {lat:42.7510,lng:-73.6790,name:"Mill St & Erie St",route:"85"},
+  {lat:42.7560,lng:-73.6778,name:"Vandenburg Ave & Lark St",route:"85"},
+  {lat:42.7638,lng:-73.6765,name:"Stow Ave & Morrison Ave",route:"85"},
+  {lat:42.7680,lng:-73.6760,name:"Cottage St & Marvin Ave",route:"85"},
+  {lat:42.7054,lng:-73.6760,name:"Hudson Valley Community College",route:"85"},
+  {lat:42.7720,lng:-73.6762,name:"6th Ave & Hoosick St",route:"85"},
+  {lat:42.7760,lng:-73.6758,name:"6th Ave & Ingalls Ave",route:"85"},
+  {lat:42.7835,lng:-73.6759,name:"5th Ave & 101st St / Lansingburgh",route:"85"},
+  {lat:42.7870,lng:-73.6755,name:"5th Ave & 108th St",route:"85"},
+  {lat:42.7910,lng:-73.6752,name:"5th Ave & 112th St",route:"85"},
+  {lat:42.7942,lng:-73.6750,name:"5th Ave & 116th St",route:"85"},
+  {lat:42.8006,lng:-73.6745,name:"Northern Dr & 5th Ave (Northern terminus Rt 85)",route:"85"},
+  // Route 87 — Hoosick St / RPI (E–W through Troy)
+  {lat:42.7267,lng:-73.6882,name:"Riverfront Station — Rt 87 terminus",route:"87"},
+  {lat:42.7290,lng:-73.6920,name:"State St & 4th Ave, Downtown Troy",route:"87"},
+  {lat:42.7310,lng:-73.6960,name:"Hoosick St & Congress St",route:"87"},
+  {lat:42.7328,lng:-73.6985,name:"Hoosick St & 15th St / RPI",route:"87"},
+  {lat:42.7340,lng:-73.7010,name:"Hoosick St & Burdett Ave",route:"87"},
+  {lat:42.7348,lng:-73.7065,name:"Hoosick St & Oakwood Ave",route:"87"},
+  {lat:42.7354,lng:-73.7120,name:"Hoosick St & Pawling Ave",route:"87"},
+  {lat:42.7360,lng:-73.7190,name:"Hoosick St & E. Industrial Pkwy",route:"87"},
+  {lat:42.7365,lng:-73.7330,name:"Brunswick Plaza (Walmart) — Rt 87",route:"87"},
+  // Route 22 — Albany–Troy via Watervliet
+  {lat:42.7267,lng:-73.6882,name:"Riverfront Station / Front St, Troy",route:"22"},
+  {lat:42.7240,lng:-73.6930,name:"River St & Ferry St, Troy",route:"22"},
+  {lat:42.7180,lng:-73.6990,name:"Green Island Bridge — Rt 9",route:"22"},
+  {lat:42.7142,lng:-73.7025,name:"Watervliet — 19th St & Broadway",route:"22"},
+  {lat:42.7095,lng:-73.7052,name:"Watervliet — 9th St & Broadway",route:"22"},
+  {lat:42.7052,lng:-73.7085,name:"Watervliet — 3rd St & Broadway",route:"22"},
+  {lat:42.6980,lng:-73.7160,name:"Albany — Northern Blvd & Van Rensselaer",route:"22"},
+  {lat:42.6624,lng:-73.7548,name:"Albany — State St / Bus Terminal",route:"22"},
+  // Route 286 — Troy / Wynantskill (via RPI Campus)
+  {lat:42.7295,lng:-73.6830,name:"State St & Congress St, Troy",route:"286"},
+  {lat:42.7302,lng:-73.6780,name:"Pawling Ave & 15th St",route:"286"},
+  {lat:42.7315,lng:-73.6730,name:"Pawling Ave & Congress St",route:"286"},
+  {lat:42.7265,lng:-73.6680,name:"Wynantskill — Sunset Dr & Forsyth Terrace",route:"286"},
+  // Route 289 — Griswold Heights / St. Mary's Hospital
+  {lat:42.7489,lng:-73.6629,name:"15th St & Massachusetts Ave",route:"289"},
+  {lat:42.7450,lng:-73.6680,name:"15th St & Park Blvd",route:"289"},
+  {lat:42.7380,lng:-73.6750,name:"Pawling Ave & 4th St",route:"289"},
+  {lat:42.7285,lng:-73.6865,name:"St. Mary's Hospital, Troy",route:"289"},
+  // Route 370 — Troy / Schenectady
+  {lat:42.7380,lng:-73.7180,name:"Rt 2 & Union St, Brunswick",route:"370"},
+  {lat:42.7460,lng:-73.7580,name:"Rt 7 & Hoosick Falls Rd, Brunswick",route:"370"},
+  {lat:42.8142,lng:-73.9396,name:"Schenectady — Erie Blvd & Rivers Casino",route:"370"},
+  // Albany key stops
+  {lat:42.6534,lng:-73.7769,name:"Albany Medical Center — New Scotland Ave",route:"13"},
+  {lat:42.6658,lng:-73.7854,name:"Albany High School — Washington Ave",route:"12"},
+  {lat:42.6452,lng:-73.7555,name:"Warren St / EOC Albany South",route:"22"},
+];
+
+// ── Real CDTA route polylines ────────────────────────────────────────────
+const cdtaRoutes = [
+  {
+    id:"rt85",name:"CDTA Route 85 — 5th Ave / Lansingburgh",color:"#1A6FE0",
+    path:[[42.7054,-73.6760],[42.7267,-73.6882],[42.7278,-73.6863],[42.7310,-73.6840],[42.7365,-73.6818],[42.7438,-73.6798],[42.7462,-73.6794],[42.7510,-73.6790],[42.7560,-73.6778],[42.7638,-73.6765],[42.7680,-73.6760],[42.7720,-73.6762],[42.7760,-73.6758],[42.7835,-73.6759],[42.7870,-73.6755],[42.7910,-73.6752],[42.7942,-73.6750],[42.8006,-73.6745]]
+  },
+  {
+    id:"rt87",name:"CDTA Route 87 — Hoosick St / RPI",color:"#7a39bb",
+    path:[[42.7267,-73.6882],[42.7290,-73.6920],[42.7310,-73.6960],[42.7328,-73.6985],[42.7340,-73.7010],[42.7348,-73.7065],[42.7354,-73.7120],[42.7360,-73.7190],[42.7365,-73.7330]]
+  },
+  {
+    id:"rt22",name:"CDTA Route 22 — Albany–Troy via Watervliet",color:"#da7101",
+    path:[[42.6624,-73.7548],[42.6980,-73.7160],[42.7052,-73.7085],[42.7095,-73.7052],[42.7142,-73.7025],[42.7180,-73.6990],[42.7240,-73.6930],[42.7267,-73.6882]]
+  },
+  {
+    id:"rt370",name:"CDTA Route 370 — Troy–Schenectady",color:"#437a22",
+    path:[[42.7267,-73.6882],[42.7380,-73.7180],[42.7460,-73.7580],[42.7850,-73.8200],[42.8142,-73.9396]]
+  },
+  {
+    id:"rt286",name:"CDTA Route 286 — Troy/Wynantskill",color:"#964219",
+    path:[[42.7267,-73.6882],[42.7295,-73.6830],[42.7302,-73.6780],[42.7315,-73.6730],[42.7265,-73.6680]]
+  },
+  {
+    id:"rt289",name:"CDTA Route 289 — Griswold Heights / St. Mary's",color:"#437a22",
+    path:[[42.7489,-73.6629],[42.7450,-73.6680],[42.7380,-73.6750],[42.7310,-73.6820],[42.7285,-73.6865]]
+  }
+];
+
+const destinations = [
+  // Hospitals — Capital District
+  {type:"hospital",name:"St. Mary's Hospital (Trinity Health)",sub:"Troy, NY — serves North Troy & Lansingburgh",lat:42.7285,lng:-73.6870,icon:"🏥"},
+  {type:"hospital",name:"Samaritan Hospital",sub:"Troy, NY — St. Peter's Health Partners",lat:42.7412,lng:-73.6694,icon:"🏥"},
+  {type:"hospital",name:"Albany Medical Center",sub:"Level 1 Trauma — Albany's major medical hub",lat:42.6534,lng:-73.7769,icon:"🏥"},
+  {type:"hospital",name:"Albany Memorial Hospital",sub:"North Albany — St. Peter's Health Partners",lat:42.6782,lng:-73.7640,icon:"🏥"},
+  {type:"hospital",name:"Ellis Hospital",sub:"Schenectady — Bellevue Campus",lat:42.8100,lng:-73.9490,icon:"🏥"},
+  // Schools/Colleges — Capital District
+  {type:"school",name:"Hudson Valley Community College",sub:"80 Vandenburgh Ave, Troy — Workforce & 2-yr degrees",lat:42.7054,lng:-73.6760,icon:"🎓"},
+  {type:"school",name:"RPI — Rensselaer Polytechnic Institute",sub:"110 8th St, Troy — Engineering & sciences",lat:42.7301,lng:-73.6819,icon:"🎓"},
+  {type:"school",name:"Russell Sage College",sub:"65 First St, Troy — Nursing, health sciences",lat:42.7273,lng:-73.6840,icon:"🎓"},
+  {type:"school",name:"SUNY Albany",sub:"1400 Washington Ave — Research university",lat:42.6877,lng:-73.8256,icon:"🎓"},
+  {type:"school",name:"SUNY Schenectady County CC",sub:"78 Washington Ave, Schenectady",lat:42.8178,lng:-73.9360,icon:"🎓"},
+  // Employment Centers — Troy / Capital Region
+  {type:"jobs",name:"Collar City / North Troy Industrial Zone",sub:"Manufacturing & light industry, Rt 4 corridor",lat:42.8006,lng:-73.6745,icon:"💼"},
+  {type:"jobs",name:"Troy Waterfront / Hedley Park Place",sub:"Office, healthcare, mixed-use employment hub",lat:42.7260,lng:-73.6895,icon:"💼"},
+  {type:"jobs",name:"Brunswick Industrial Park (Rt 7)",sub:"Light manufacturing, 800+ jobs, no bus access",lat:42.7365,lng:-73.7330,icon:"💼"},
+  {type:"jobs",name:"GlobalFoundries / Luther Forest Tech Campus",sub:"Semiconductor fab — Saratoga County, 3,000+ jobs",lat:42.8310,lng:-73.9050,icon:"💼"},
+];
+
+
+// ── DESTINATION PROXIMITY SCORING ────────────────────────────────────────────
+function haversineMi(lat1,lng1,lat2,lng2){
+  const R=3958.8,r=Math.PI/180;
+  const dLat=(lat2-lat1)*r, dLng=(lng2-lng1)*r;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Weight config — how many pts each destination type adds per route (if within radius)
+const DEST_WEIGHTS={hospital:{pts:8,radiusMi:2},school:{pts:6,radiusMi:2},jobs:{pts:10,radiusMi:2}};
+const DEST_BONUS_CAP=20;
+
+function computeDestBonus(s){
+  // Use route midpoint for distance calculation
+  const midLat=(s.lat+s.lat2)/2, midLng=(s.lng+s.lng2)/2;
+  let bonus=0;
+  const nearby=[];
+  destinations.forEach(d=>{
+    const dist=haversineMi(midLat,midLng,d.lat,d.lng);
+    const cfg=DEST_WEIGHTS[d.type];
+    if(cfg && dist<=cfg.radiusMi){
+      bonus+=cfg.pts;
+      nearby.push({name:d.name,icon:d.icon,type:d.type,dist:dist.toFixed(1)});
+    }
+  });
+  return {bonus:Math.min(bonus,DEST_BONUS_CAP),nearby};
+}
+
+// ── AI Route Suggestions — Troy/Capital District focused ─────────────────
+const aiSuggestions = [
+  {
+    // NEW CORRIDOR: North Greenbush township (Rt. 4) → HVCC
+    // Rationale: 370 car-free adults east of Troy with no CDTA service at all;
+    // HVCC is the primary adult ed destination, not downtown Troy.
+    id:"s1",title:"North Greenbush → Lansingburgh Adult Ed Shuttle",
+    type:"shuttle",priority:"critical",score:94,costKyr:85,overlap:"none",overlapNote:"New corridor — Rt. 4 / Rt. 40 east of Troy has zero CDTA service. Terminates at Lansingburgh CSD adult ed site, serving North Greenbush directly without a downtown transfer.",
+    lat:42.6820,lng:-73.6340,lat2:42.7835,lng2:-73.6759,
+    pop:3400,carFree:11,nearestEd:3.1,
+    body:"North Greenbush borders Troy with zero CDTA service. About 370 car-free adults have no transit access to any adult ed site. A demand-responsive shuttle on Rt. 40 / Rt. 4 running 3x daily (7am, 12pm, 5pm) connects North Greenbush directly to the Lansingburgh CSD Adult Programs site — the closest adult ed provider — without requiring a downtown Troy transfer. At ~$85K/yr this is lower cost than a full CDTA route.",
+    tags:["Rt. 40 / Rt. 4 corridor","3x daily runs","Direct to Lansingburgh","FTA §5310 eligible"]
+  },
+  {
+    // ROUTE EXTENSION: Extend Rt. 85 southern terminus from HVCC down to
+    // Wynantskill / South Troy industrial zone and Rensselaer Amtrak station.
+    // Currently Rt. 85 terminates at HVCC going south — nothing south of that.
+    id:"s2",title:"Route 85 South Extension — HVCC to Rensselaer Station",
+    type:"bus",priority:"critical",score:89,costKyr:72,overlap:"extension",overlapRoute:"Route 85",overlapNote:"Extends existing Rt. 85 southward from its current HVCC terminus — adds 4 new stops through Wynantskill and terminates at Rensselaer Amtrak for regional connectivity.",
+    lat:42.7054,lng:-73.6760,lat2:42.6440,lng2:-73.7360,
+    pop:5800,carFree:13,nearestEd:1.2,
+    body:"Route 85 currently terminates at HVCC heading south, leaving Wynantskill, East Greenbush approaches, and Rensselaer completely unserved. Extending 5.2 miles south through the Rt. 4 corridor to Rensselaer Amtrak station connects adult learners to regional rail and opens 4 new stop locations in a transit desert. The Rensselaer station also serves as an inter-county transfer hub.",
+    tags:["Rt. 85 south extension","Rensselaer Amtrak connection","4 new stops","Regional rail link"]
+  },
+  {
+    // NEW CORRIDOR: Castleton-on-Hudson → Schodack Landing (Rt. 9J)
+    // Questar III BOCES in Castleton has zero transit — this is a true desert.
+    // Route terminates at Schodack Landing where CDTA 233 already exists,
+    // creating a transfer point rather than duplicating the full run to Albany.
+    id:"s3",title:"Castleton–Schodack Connector (Rt. 9J)",
+    type:"bus",priority:"critical",score:86,costKyr:52,overlap:"none",overlapNote:"Entirely new corridor on Rt. 9J — Castleton and Schodack Landing have zero CDTA coverage. Terminates at existing CDTA 233 stop for seamless transfer to Albany.",
+    lat:42.5319,lng:-73.7490,lat2:42.6210,lng2:-73.7580,
+    pop:3100,carFree:8,nearestEd:5.2,
+    body:"Questar III BOCES in Castleton-on-Hudson is 5.2 miles from any bus stop with zero fixed-route service. A new Rt. 9J connector running from Castleton north to Schodack Landing (where CDTA 233 already stops) creates a low-cost feeder route. Adults transfer at Schodack Landing for onward service to Albany. At ~$52K/yr this is the lowest-cost option to eliminate a critical access desert.",
+    tags:["Rt. 9J new corridor","Schodack transfer point","Feeder to CDTA 233","~$52K/yr"]
+  },
+  {
+    // NEW CROSS-COUNTY EXPRESS: Schenectady downtown → SUNY Albany via I-890/I-87 corridor
+    // No direct transit exists between Schenectady's adult ed cluster and SUNY Albany.
+    // Adults must take 3 buses and 90+ minutes today.
+    id:"s4",title:"Schenectady → SUNY Albany Adult Ed Express",
+    type:"bus",priority:"high",score:78,costKyr:98,overlap:"none",overlapNote:"New express corridor — no direct transit link between Schenectady's adult ed cluster and SUNY Albany. Current trip requires 3 transfers and 90+ min each way.",
+    lat:42.8142,lng:-73.9396,lat2:42.6877,lng2:-73.8256,
+    pop:6200,carFree:26,nearestEd:0.2,
+    body:"Schenectady City School Adult Ed and Mohawk Opportunities serve hundreds of adults seeking workforce credentials — many of whom need access to SUNY Albany's professional and continuing ed programs. Today there is no direct transit link between the two cities' education hubs. An express route on the I-890 / Washington Ave corridor (4x daily, 45-min trip) would serve 26% car-free households in Hamilton Hill and link two major workforce development anchors.",
+    tags:["Schenectady–Albany express","4x daily","45-min trip","Hamilton Hill catchment"]
+  },
+  {
+    // NEW CROSS-COUNTY CONNECTOR: Albany South (Warren St EOC) → HVCC
+    // These are two of the region's largest adult ed hubs with NO direct transit link.
+    // Rt. 22 goes Troy↔Albany but doesn't reach HVCC campus.
+    id:"s5",title:"Albany EOC → Samaritan Hospital Cross-City Link",
+    type:"bus",priority:"high",score:74,costKyr:95,overlap:"none",overlapNote:"New express corridor — no existing route links Albany's Warren St EOC to Samaritan Hospital in north Troy. Serves adults needing healthcare access and workforce training in one corridor.",
+    lat:42.6452,lng:-73.7555,lat2:42.7412,lng2:-73.6694,
+    pop:8400,carFree:35,nearestEd:0.8,
+    body:"Albany's Capital District EOC on Warren St serves adults who also need access to healthcare and workforce training in Troy. No direct transit links the two cities along the river corridor north of downtown. A 4x daily express via the Rt. 787 / Collar City Bridge corridor connects the Albany EOC to Samaritan Hospital's workforce development programs and north Troy adult ed sites. The 35% car-free households near the Albany EOC gain a direct 32-min ride to Troy's north employment and healthcare cluster.",
+    tags:["Albany–Troy river corridor","4x daily","Samaritan Hospital access","35% car-free catchment"]
+  },
+  {
+    // FREQUENCY + EXTENSION: Rt. 87 extension past Brunswick Plaza terminus
+    // to reach Brunswick Industrial Park employment zone (800+ jobs, no bus).
+    id:"s6",title:"Route 87 East Extension — Brunswick Plaza to Industrial Park",
+    type:"bus",priority:"medium",score:71,costKyr:41,overlap:"extension",overlapRoute:"Route 87",overlapNote:"Extends Rt. 87 eastward 0.5mi past its Brunswick Plaza terminus — the new segment to Brunswick Industrial Park is entirely unserved new territory.",
+    lat:42.7365,lng:-73.7330,lat2:42.7410,lng2:-73.7180,
+    pop:2800,carFree:12,nearestEd:0.1,
+    body:"Route 87 terminates at Brunswick Plaza (Walmart), just 0.5 miles short of Brunswick Industrial Park — an employment zone with 800+ jobs and zero bus access. EOC graduates completing GED or workforce credentials cannot reach jobs without a car. Extending Rt. 87 by 2 stops east closes this education-to-employment gap for ~$41K/yr. The extension also passes Rensselaer County's growing light-manufacturing corridor on Rt. 7.",
+    tags:["Rt. 87 east extension","Brunswick Ind. Park","0.5mi last-mile gap","Education→Employment"]
+  },
+  {
+    // NEW CORRIDOR: Wilton/Gansevoort (south Saratoga) → GlobalFoundries / Luther Forest
+    // Completely unserved area; GlobalFoundries has 3,000+ jobs and adult workforce training need.
+    // Route connects Southern Adirondack Ed Center to the primary employment destination.
+    id:"s7",title:"Wilton → GlobalFoundries Workforce Connector",
+    type:"shuttle",priority:"medium",score:63,costKyr:110,overlap:"none",overlapNote:"New corridor entirely — Saratoga County south of Saratoga Springs has zero fixed-route transit. Connects adult ed site directly to the region's largest employer.",
+    lat:43.1420,lng:-73.7070,lat2:42.8310,lng2:-73.9050,
+    pop:2800,carFree:7,nearestEd:4.8,
+    body:"Southern Adirondack Ed Center in Wilton serves adults seeking GED and workforce credentials for careers at GlobalFoundries — Saratoga County's largest employer with 3,000+ jobs. Yet no transit connects the two. An on-demand STVTA micro-transit shuttle running Mon–Fri (6am, 2pm, 10pm shift times) directly between the Ed Center and Luther Forest Tech Campus aligns with GlobalFoundries shift schedules and provides a clear education-to-employment pipeline.",
+    tags:["STVTA micro-transit","GlobalFoundries shifts","Workforce pipeline","FTA §5311 rural"]
+  }
+];
+
+// Apply destination + cost/distance bonuses (must run after aiSuggestions is declared)
+aiSuggestions.forEach(s=>{
+  // Route length (straight-line between endpoints)
+  s.routeMi=Math.round(haversineMi(s.lat,s.lng,s.lat2,s.lng2)*10)/10;
+
+  // Cost efficiency: annual cost per route-mile
+  s.costPerMi=s.costKyr && s.routeMi>0 ? Math.round((s.costKyr/s.routeMi)*10)/10 : null;
+
+  // Efficiency bonus: cheaper per mile = higher score
+  let effBonus=0;
+  if(s.costPerMi!==null){
+    if(s.costPerMi<=15)      effBonus=8;
+    else if(s.costPerMi<=25) effBonus=5;
+    else if(s.costPerMi<=40) effBonus=2;
+  }
+  s.effBonus=effBonus;
+
+  // Destination proximity bonus
+  const {bonus:destBonus,nearby}=computeDestBonus(s);
+  s.destBonus=destBonus;
+  s.nearbyDests=nearby;
+
+  // Overlap penalty: frequency/extension = -3, parallel = -6 (fills gap but duplicates corridor)
+  // "none" overlaps get no penalty — they serve new territory
+  s.overlapPenalty=s.overlap==='frequency'?-3:s.overlap==='extension'?-3:s.overlap==='parallel'?-6:0;
+
+  // Final score
+  s.baseScore=s.score;
+  s.score=Math.min(100,Math.max(0,s.baseScore+s.destBonus+s.effBonus+s.overlapPenalty));
+});
+
+const desertZones = [
+  {coords:[[42.660,-73.660],[42.660,-73.600],[42.710,-73.600],[42.710,-73.660]],label:"North Greenbush Gap",impact:"~3,400 adults, 0 CDTA stops — borders Troy but no service"},
+  {coords:[[42.510,-73.790],[42.510,-73.710],[42.560,-73.710],[42.560,-73.790]],label:"Castleton / South Rensselaer Gap",impact:"Questar III BOCES: 5.2 mi to nearest bus — zero fixed-route service"},
+  {coords:[[43.110,-73.760],[43.110,-73.660],[43.175,-73.660],[43.175,-73.760]],label:"Wilton / South Saratoga Gap",impact:"~2,800 adults, no CDTA or STVTA service south of Saratoga Springs"},
+  {coords:[[42.620,-74.360],[42.620,-74.280],[42.720,-74.280],[42.720,-74.360]],label:"Schoharie County Gap",impact:"~2,200 adults, deeply rural — Capital Region BOCES unreachable without car"},
+];
+
+// Equity heat map data — Capital District (lat, lng, intensity — higher = more deprived)
+const heatData = [
+  // Downtown Troy — high car-free, low income
+  [42.7267,-73.6882,0.90],[42.7280,-73.6850,0.88],[42.7260,-73.6900,0.85],[42.7240,-73.6920,0.82],
+  // North Troy / Lansingburgh — moderate deprivation, partial transit
+  [42.7835,-73.6759,0.72],[42.7750,-73.6760,0.68],[42.7680,-73.6760,0.65],
+  // South Troy — higher poverty, some transit
+  [42.7210,-73.6955,0.78],[42.7180,-73.6990,0.75],
+  // North Greenbush — no transit, moderate car-free
+  [42.6820,-73.6340,0.85],[42.6900,-73.6400,0.80],[42.6750,-73.6280,0.82],
+  // Castleton / South Rensselaer — rural, low income
+  [42.5319,-73.7490,0.88],[42.5500,-73.7350,0.80],[42.5700,-73.7200,0.70],
+  // Albany downtown — high car-free, served
+  [42.6452,-73.7555,0.60],[42.6624,-73.7548,0.58],[42.6658,-73.7854,0.55],
+  // Schenectady — Hamilton Hill, high deprivation
+  [42.8142,-73.9396,0.65],[42.8118,-73.9404,0.68],[42.8060,-73.9350,0.62],
+  // Wilton / South Saratoga — no transit, moderate deprivation
+  [43.1420,-73.7070,0.80],[43.1200,-73.7100,0.75],[43.0900,-73.7200,0.70],
+  // Schoharie County — deeply rural, low income
+  [42.6670,-74.3170,0.92],[42.7000,-74.3000,0.85],[42.6400,-74.2800,0.80],
+];
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MAP INIT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const map = L.map('map',{center:[42.7267,-73.7200],zoom:11,zoomControl:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CartoDB | NYSED · Census ACS · CDTA GTFS · Capital District EOC',maxZoom:18
+}).addTo(map);
+setTimeout(()=>map.invalidateSize(),300);
+
+// ── LAYER GROUPS ──────────────────────────────────────────────────
+const layers = {
+  served:L.layerGroup().addTo(map),
+  desert:L.layerGroup().addTo(map),
+  partial:L.layerGroup().addTo(map),
+  stops:L.layerGroup().addTo(map),
+  cdtaLines:L.layerGroup().addTo(map),
+  radius:L.layerGroup().addTo(map),
+  heat:L.layerGroup(),
+  desertzone:L.layerGroup().addTo(map),
+  hospitals:L.layerGroup().addTo(map),
+  schools:L.layerGroup().addTo(map),
+  jobs:L.layerGroup(),
+  aiRoutes:L.layerGroup().addTo(map),
+  priority:L.layerGroup().addTo(map),
+  // simulation layers
+  simBefore:L.layerGroup().addTo(map),
+  simAfter:L.layerGroup()
+};
+const layerStates = {served:true,desert:true,partial:true,stops:true,cdtaLines:true,radius:true,heat:false,desertzone:true,hospitals:true,schools:true,jobs:false,aiRoutes:true,priority:true};
+
+function toggleLyr(name,el){
+  layerStates[name]=!layerStates[name];
+  el.classList.toggle('on',layerStates[name]);
+  if(layerStates[name]) map.addLayer(layers[name]);
+  else map.removeLayer(layers[name]);
+}
+
+// ── COLORS ────────────────────────────────────────────────────────
+const C={served:'#437a22',desert:'#a13544',partial:'#da7101',stop:'#4B9BFF',hospital:'#006494',school:'#7a39bb',jobs:'#964219',teal:'#01696f'};
+const CB={served:'#2d5a14',desert:'#7a1f30',partial:'#8a4000',stop:'#1A6FE0',hospital:'#004a70',school:'#5f2699',jobs:'#5a2e0b',teal:'#0c4e54'};
+
+// ── CDTA ROUTE LINES ──────────────────────────────────────────────
+cdtaRoutes.forEach(r=>{
+  L.polyline(r.path,{color:r.color,weight:3.5,opacity:0.65,smoothFactor:1})
+    .bindTooltip(`<b>${r.name}</b>`,{sticky:true,direction:'top'})
+    .addTo(layers.cdtaLines);
+});
+
+// ── TRANSIT STOPS ─────────────────────────────────────────────────
+const routeColors={'85':'#1A6FE0','87':'#7a39bb','22':'#da7101','286':'#964219','289':'#437a22','370':'#437a22'};
+transitStops.forEach(s=>{
+  const col = routeColors[s.route]||C.stop;
+  L.circleMarker([s.lat,s.lng],{radius:4,fillColor:col,color:'#fff',weight:1.2,fillOpacity:0.9})
+    .bindTooltip(`<b>${s.name}</b><br><span style="font-size:10px;color:#888">CDTA Route ${s.route}</span>`,{sticky:true}).addTo(layers.stops);
+});
+
+// ── DESERT ZONES ─────────────────────────────────────────────────
+desertZones.forEach(z=>{
+  L.polygon(z.coords,{color:'#a13544',weight:1.5,opacity:0.6,fillColor:'#a13544',fillOpacity:0.07})
+    .bindTooltip(`<b>${z.label}</b><br>${z.impact}`,{sticky:true}).addTo(layers.desertzone);
+});
+
+// ── HEAT MAP ──────────────────────────────────────────────────────
+const heatLayer = L.heatLayer(heatData.map(d=>[d[0],d[1],d[2]]),{
+  radius:40,blur:30,maxZoom:13,
+  gradient:{0.3:'#437a22',0.55:'#da7101',0.75:'#a13544',1.0:'#7a1f30'}
+}).addTo(layers.heat);
+
+// ── DESTINATION MARKERS ───────────────────────────────────────────
+destinations.forEach(d=>{
+  const col = d.type==='hospital'?C.hospital:d.type==='school'?C.school:C.jobs;
+  const bcol = d.type==='hospital'?CB.hospital:d.type==='school'?CB.school:CB.jobs;
+  const lyr = layers[d.type==='jobs'?'jobs':d.type+'s'];
+  const popup = buildDestPopup(d);
+  L.circleMarker([d.lat,d.lng],{radius:7,fillColor:col,color:bcol,weight:2,fillOpacity:0.9})
+    .bindPopup(popup,{maxWidth:280,minWidth:260})
+    .on('click',()=>showInsight(d.name,`${d.name} (${d.sub}) is a key destination for adults completing workforce credentials. Transit connectivity to this site from adult education facilities is ${d.type==='hospital'?'critical for healthcare access and healthcare worker training programs':'a workforce development priority — connecting program graduates to employment is as important as connecting students to programs'}.`))
+    .addTo(lyr);
+});
+
+// ── FACILITIES ────────────────────────────────────────────────────
+const facMarkers = [];
+facilities.forEach(f=>{
+  const col = C[f.access], bcol = CB[f.access];
+  const lyr = layers[f.access];
+
+  // Walk radius
+  L.circle([f.lat,f.lng],{radius:804,color:col,weight:1.5,opacity:0.4,fillColor:col,fillOpacity:0.04}).addTo(layers.radius);
+
+  const m = L.circleMarker([f.lat,f.lng],{radius:9,fillColor:col,color:bcol,weight:2.5,fillOpacity:0.92})
+    .bindPopup(buildFacPopup(f),{maxWidth:280,minWidth:260})
+    .on('click',()=>{
+      highlightFac(f.id);
+      showInsight(f.name,geminiInsight(f));
+    }).addTo(lyr);
+  facMarkers.push(m);
+
+  // Sidebar list item
+  const el=document.createElement('div');
+  el.className='fac-item';el.id='fi-'+f.id;
+  el.innerHTML=`<div class="fac-name">${f.name}</div><div class="fac-meta"><span class="tag county">${f.county}</span><span class="tag ${f.access}">${f.access==='desert'?'Desert':f.access==='served'?'Served':'Limited'}</span><span class="fac-dist">${f.nearestStop} mi to stop</span></div>`;
+  el.onclick=()=>{map.setView([f.lat,f.lng],13);m.openPopup();highlightFac(f.id);showInsight(f.name,geminiInsight(f));};
+  document.getElementById('fac-list').appendChild(el);
+});
+
+// ── DESTINATION SIDEBAR ───────────────────────────────────────────
+destinations.forEach(d=>{
+  const bgCol=d.type==='hospital'?'#e0eef6':d.type==='school'?'#f0eaf8':'#fdf0e6';
+  const el=document.createElement('div');
+  el.className='dest-item';
+  el.innerHTML=`<div class="dest-icon" style="background:${bgCol}">${d.icon}</div><div class="dest-info"><div class="dest-name">${d.name}</div><div class="dest-sub">${d.sub}</div></div>`;
+  el.onclick=()=>{map.setView([d.lat,d.lng],14);};
+  document.getElementById('dest-list').appendChild(el);
+});
+
+// ── OSRM road-following paths (pre-fetched at build time) ──────────────
+const roadPaths = {
+  s1: [[42.68206,-73.63437],[42.68288,-73.63414],[42.68336,-73.63398],[42.68376,-73.63385],[42.68405,-73.63376],[42.68498,-73.63343],[42.68517,-73.63337],[42.68543,-73.63328],[42.68649,-73.63296],[42.68659,-73.63318],[42.68666,-73.63334],[42.68681,-73.63366],[42.68686,-73.63375],[42.68695,-73.6339],[42.68697,-73.63392],[42.68713,-73.63415],[42.68723,-73.63429],[42.68734,-73.63441],[42.68751,-73.63457],[42.68782,-73.63483],[42.68817,-73.6351],[42.68849,-73.63539],[42.68882,-73.63571],[42.68984,-73.63676],[42.69029,-73.63721],[42.6904,-73.63733],[42.69056,-73.63749],[42.69062,-73.63755],[42.69102,-73.63703],[42.69149,-73.63644],[42.69163,-73.63628],[42.69182,-73.63607],[42.6919,-73.636],[42.69198,-73.63594],[42.69226,-73.63577],[42.69255,-73.6356],[42.69277,-73.63544],[42.69297,-73.63526],[42.69305,-73.63519],[42.69327,-73.63498],[42.69345,-73.63483],[42.69353,-73.63476],[42.69363,-73.63491],[42.69405,-73.6355],[42.69406,-73.63552],[42.69421,-73.63574],[42.6943,-73.63587],[42.69462,-73.63632],[42.6947,-73.63646],[42.69483,-73.63669],[42.69491,-73.63691],[42.69514,-73.6377],[42.69536,-73.63847],[42.69546,-73.63881],[42.6955,-73.63896],[42.69554,-73.63915],[42.69562,-73.63944],[42.69574,-73.63987],[42.69604,-73.64096],[42.6961,-73.64116],[42.69622,-73.64161],[42.69624,-73.64168],[42.69627,-73.6418],[42.69633,-73.64202],[42.69637,-73.64219],[42.69646,-73.64263],[42.69667,-73.64363],[42.69681,-73.64432],[42.69686,-73.64458],[42.69689,-73.64472],[42.69693,-73.64493],[42.69698,-73.64518],[42.69703,-73.64539],[42.69703,-73.64542],[42.69712,-73.64587],[42.69714,-73.646],[42.6972,-73.64624],[42.69723,-73.64642],[42.6973,-73.64674],[42.69732,-73.64685],[42.69739,-73.64717],[42.69743,-73.6474],[42.69748,-73.64765],[42.69755,-73.64796],[42.69757,-73.64807],[42.69774,-73.64897],[42.69782,-73.64931],[42.69789,-73.64956],[42.69806,-73.64999],[42.6982,-73.65028],[42.69835,-73.65054],[42.69855,-73.65085],[42.6986,-73.65093],[42.69867,-73.65101],[42.69891,-73.65128],[42.69943,-73.65178],[42.69964,-73.65205],[42.69972,-73.65219],[42.70003,-73.65266],[42.70029,-73.65309],[42.70103,-73.65431],[42.70106,-73.65436],[42.70128,-73.65471],[42.70133,-73.65481],[42.70134,-73.65485],[42.70136,-73.65492],[42.70148,-73.65528],[42.70155,-73.6555],[42.70162,-73.65575],[42.70174,-73.65614],[42.70181,-73.65639],[42.70187,-73.65654],[42.70194,-73.65669],[42.70205,-73.65686],[42.70218,-73.65704],[42.70231,-73.6572],[42.70266,-73.65752],[42.70329,-73.65811],[42.70335,-73.65817],[42.70371,-73.65848],[42.70389,-73.65866],[42.70402,-73.65878],[42.70416,-73.65891],[42.70426,-73.65901],[42.70468,-73.65939],[42.70512,-73.65982],[42.70528,-73.65999],[42.70542,-73.66015],[42.70556,-73.6603],[42.70563,-73.66039],[42.70619,-73.66101],[42.70627,-73.6611],[42.7065,-73.6613],[42.70692,-73.66163],[42.70698,-73.66168],[42.70709,-73.66176],[42.70718,-73.66182],[42.70769,-73.6622],[42.7081,-73.66251],[42.70888,-73.66309],[42.70921,-73.66333],[42.70946,-73.66353],[42.70964,-73.66372],[42.70965,-73.66373],[42.71037,-73.66448],[42.7106,-73.66469],[42.7107,-73.66477],[42.71077,-73.66483],[42.71172,-73.66549],[42.71214,-73.66579],[42.71222,-73.66585],[42.71228,-73.66588],[42.71257,-73.66609],[42.71288,-73.6663],[42.71321,-73.66654],[42.71322,-73.66656],[42.71328,-73.6666],[42.71333,-73.66664],[42.71335,-73.66666],[42.7139,-73.6671],[42.71397,-73.66715],[42.71427,-73.66739],[42.71454,-73.66761],[42.71457,-73.66764],[42.71464,-73.6677],[42.71472,-73.66778],[42.71515,-73.66826],[42.71593,-73.66913],[42.71648,-73.66977],[42.71705,-73.6704],[42.71755,-73.671],[42.71764,-73.67112],[42.71793,-73.67156],[42.71808,-73.67183],[42.71822,-73.67207],[42.71824,-73.67212],[42.71844,-73.67256],[42.71856,-73.67284],[42.71882,-73.67342],[42.71894,-73.67374],[42.71916,-73.67434],[42.71928,-73.67453],[42.71938,-73.67465],[42.71948,-73.67472],[42.71957,-73.67477],[42.71971,-73.67485],[42.72033,-73.675],[42.72082,-73.67512],[42.7209,-73.67514],[42.72098,-73.67517],[42.72138,-73.67528],[42.72155,-73.67532],[42.72181,-73.67539],[42.72189,-73.67542],[42.72214,-73.67547],[42.72223,-73.67549],[42.72222,-73.67589],[42.72222,-73.67606],[42.72221,-73.67636],[42.72221,-73.67644],[42.7222,-73.67651],[42.72219,-73.67659],[42.72197,-73.67816],[42.72196,-73.67832],[42.72197,-73.67845],[42.72204,-73.67868],[42.72213,-73.67889],[42.72216,-73.67894],[42.72229,-73.67918],[42.72254,-73.67952],[42.72263,-73.67964],[42.72266,-73.67968],[42.72273,-73.67976],[42.72281,-73.67987],[42.7232,-73.68044],[42.72326,-73.68053],[42.72327,-73.68053],[42.72333,-73.6806],[42.72357,-73.68076],[42.72389,-73.68091],[42.7242,-73.68105],[42.72425,-73.68107],[42.7243,-73.68109],[42.72434,-73.68111],[42.72448,-73.68117],[42.72474,-73.68129],[42.72481,-73.68131],[42.72513,-73.68141],[42.72543,-73.68149],[42.72574,-73.68155],[42.72588,-73.68157],[42.72614,-73.6816],[42.7263,-73.68161],[42.72639,-73.68164],[42.72649,-73.6817],[42.72659,-73.68177],[42.72669,-73.68191],[42.72682,-73.68221],[42.72691,-73.68246],[42.72709,-73.68303],[42.72735,-73.68379],[42.72742,-73.68402],[42.72751,-73.68437],[42.72759,-73.68487],[42.72762,-73.68503],[42.72772,-73.68529],[42.72776,-73.68547],[42.7278,-73.68561],[42.72787,-73.68585],[42.72818,-73.68654],[42.72821,-73.68661],[42.72823,-73.68666],[42.72828,-73.68683],[42.72832,-73.68699],[42.72833,-73.68708],[42.7284,-73.68707],[42.72872,-73.687],[42.72888,-73.68697],[42.72909,-73.68692],[42.72955,-73.68683],[42.7296,-73.68682],[42.72967,-73.6868],[42.72996,-73.68673],[42.73014,-73.68669],[42.73019,-73.68668],[42.7306,-73.68658],[42.73064,-73.68657],[42.7308,-73.68653],[42.73085,-73.68652],[42.73094,-73.6865],[42.73173,-73.68633],[42.73203,-73.68626],[42.73211,-73.68624],[42.73218,-73.68623],[42.73241,-73.68618],[42.73285,-73.68607],[42.7331,-73.686],[42.73316,-73.68597],[42.73343,-73.68584],[42.73358,-73.68575],[42.7337,-73.68568],[42.73375,-73.68585],[42.73382,-73.68612],[42.73389,-73.68632],[42.73409,-73.68681],[42.73427,-73.6867],[42.73437,-73.68664],[42.73451,-73.68656],[42.73474,-73.68641],[42.73518,-73.68614],[42.73548,-73.68599],[42.73565,-73.68591],[42.7357,-73.68588],[42.73575,-73.68586],[42.73579,-73.68584],[42.7361,-73.68573],[42.73679,-73.68554],[42.73696,-73.68549],[42.73699,-73.68548],[42.73731,-73.68539],[42.73785,-73.68525],[42.7384,-73.6851],[42.73964,-73.68476],[42.74064,-73.68448],[42.7407,-73.68446],[42.74172,-73.68419],[42.74173,-73.68418],[42.74178,-73.68417],[42.74184,-73.68415],[42.74201,-73.6841],[42.74295,-73.68383],[42.74298,-73.68381],[42.74305,-73.6838],[42.74493,-73.68329],[42.74522,-73.68318],[42.74543,-73.6831],[42.74584,-73.68301],[42.74591,-73.683],[42.74598,-73.68299],[42.74708,-73.6828],[42.74714,-73.68279],[42.74721,-73.68278],[42.74763,-73.6827],[42.74783,-73.6827],[42.74871,-73.68254],[42.74876,-73.68253],[42.74881,-73.68252],[42.74917,-73.68248],[42.74953,-73.68249],[42.75066,-73.6825],[42.75105,-73.6825],[42.75122,-73.68249],[42.75201,-73.6825],[42.75296,-73.68249],[42.75321,-73.6825],[42.75328,-73.6825],[42.75372,-73.68251],[42.75379,-73.68251],[42.75386,-73.68251],[42.75443,-73.68251],[42.7546,-73.68252],[42.75485,-73.68253],[42.75576,-73.68253],[42.75608,-73.68252],[42.7565,-73.68249],[42.75684,-73.68245],[42.75722,-73.6824],[42.75733,-73.68237],[42.75801,-73.68226],[42.75949,-73.68203],[42.76013,-73.68197],[42.76087,-73.68189],[42.76105,-73.68186],[42.76187,-73.68164],[42.76214,-73.68156],[42.76277,-73.68134],[42.76327,-73.68111],[42.7633,-73.68109],[42.76338,-73.68106],[42.76345,-73.68103],[42.76347,-73.68102],[42.76413,-73.68071],[42.76426,-73.68064],[42.76454,-73.68051],[42.76579,-73.67996],[42.7667,-73.67955],[42.76705,-73.67939],[42.76742,-73.67922],[42.76774,-73.67908],[42.7682,-73.67887],[42.76827,-73.67884],[42.76835,-73.6788],[42.76942,-73.67831],[42.7695,-73.67827],[42.76958,-73.67824],[42.77067,-73.67776],[42.77073,-73.67773],[42.77082,-73.67769],[42.77196,-73.67718],[42.77256,-73.67691],[42.77311,-73.67666],[42.77319,-73.67662],[42.77326,-73.6766],[42.7744,-73.67607],[42.77562,-73.67551],[42.77683,-73.67496],[42.77802,-73.67442],[42.77916,-73.67388],[42.78034,-73.67333],[42.78155,-73.67276],[42.78276,-73.6722],[42.78291,-73.6728],[42.78305,-73.67338],[42.78311,-73.6736],[42.78316,-73.6738],[42.7832,-73.67395],[42.78334,-73.67451],[42.78339,-73.67472],[42.78346,-73.67501]],
+  s2: [[42.70541,-73.676],[42.70546,-73.67568],[42.70538,-73.67563],[42.70528,-73.67557],[42.7053,-73.67548],[42.70536,-73.6752],[42.7059,-73.67547],[42.70674,-73.67586],[42.70696,-73.676],[42.70724,-73.6763],[42.70754,-73.67661],[42.70767,-73.67669],[42.70755,-73.67711],[42.70736,-73.67767],[42.70735,-73.67772],[42.70731,-73.67781],[42.70729,-73.67788],[42.70718,-73.67818],[42.70716,-73.67823],[42.70705,-73.67849],[42.70702,-73.67856],[42.70689,-73.67887],[42.7068,-73.67909],[42.70669,-73.67934],[42.70663,-73.67949],[42.70652,-73.67977],[42.70649,-73.67985],[42.70627,-73.68061],[42.7061,-73.68112],[42.70607,-73.68119],[42.70599,-73.68142],[42.70589,-73.68162],[42.70572,-73.68192],[42.70551,-73.6822],[42.70484,-73.68307],[42.70459,-73.68346],[42.70445,-73.6837],[42.7043,-73.68398],[42.7041,-73.68444],[42.70402,-73.68467],[42.70398,-73.68498],[42.70401,-73.6856],[42.70398,-73.68618],[42.7039,-73.68716],[42.70387,-73.68774],[42.70386,-73.68789],[42.70385,-73.68798],[42.70384,-73.68807],[42.70383,-73.68818],[42.7038,-73.68838],[42.70376,-73.68858],[42.70385,-73.68865],[42.70391,-73.68872],[42.70411,-73.68891],[42.70436,-73.68925],[42.70442,-73.68933],[42.70461,-73.6897],[42.70468,-73.6899],[42.70473,-73.69012],[42.70475,-73.69027],[42.70477,-73.69048],[42.70477,-73.69062],[42.70476,-73.69071],[42.70475,-73.69097],[42.70469,-73.69133],[42.70467,-73.6914],[42.70458,-73.69173],[42.70456,-73.69184],[42.70452,-73.69201],[42.70452,-73.6921],[42.70451,-73.69219],[42.70453,-73.69374],[42.70456,-73.69425],[42.70456,-73.69461],[42.70457,-73.695],[42.70459,-73.69586],[42.70461,-73.696],[42.70461,-73.69611],[42.70462,-73.69622],[42.70461,-73.6963],[42.70459,-73.69638],[42.70456,-73.69644],[42.7045,-73.6966],[42.70443,-73.69656],[42.70437,-73.69652],[42.70429,-73.69649],[42.70421,-73.69646],[42.70413,-73.69644],[42.70401,-73.69643],[42.70394,-73.69643],[42.70392,-73.69643],[42.70357,-73.69648],[42.70303,-73.69656],[42.70287,-73.69659],[42.70274,-73.69661],[42.70263,-73.69665],[42.70251,-73.69671],[42.70248,-73.69673],[42.70241,-73.69677],[42.70226,-73.69687],[42.70215,-73.69698],[42.70204,-73.69708],[42.70195,-73.69719],[42.70186,-73.69731],[42.70177,-73.69746],[42.7017,-73.6976],[42.70163,-73.69775],[42.70158,-73.6979],[42.70153,-73.69806],[42.70149,-73.69824],[42.70147,-73.69842],[42.70133,-73.69963],[42.70131,-73.69984],[42.70083,-73.7041],[42.70082,-73.70429],[42.70081,-73.70447],[42.7008,-73.70464],[42.70078,-73.70484],[42.7007,-73.70544],[42.70049,-73.70723],[42.70044,-73.7077],[42.70036,-73.70835],[42.70021,-73.70929],[42.70018,-73.70948],[42.70012,-73.70968],[42.70006,-73.70988],[42.69998,-73.71008],[42.69989,-73.71026],[42.69981,-73.71041],[42.69972,-73.71055],[42.69962,-73.71068],[42.69954,-73.71078],[42.69945,-73.71088],[42.69936,-73.71098],[42.69926,-73.71106],[42.69917,-73.71113],[42.69905,-73.7112],[42.69895,-73.71126],[42.69882,-73.71132],[42.69871,-73.71137],[42.69859,-73.7114],[42.69848,-73.71143],[42.69835,-73.71145],[42.69821,-73.71146],[42.69809,-73.71146],[42.69798,-73.71145],[42.69786,-73.71143],[42.69775,-73.7114],[42.69763,-73.71137],[42.6975,-73.71131],[42.69739,-73.71126],[42.69728,-73.71119],[42.69633,-73.71055],[42.69617,-73.71046],[42.69603,-73.71039],[42.69586,-73.71032],[42.69571,-73.71027],[42.69555,-73.71023],[42.69539,-73.71021],[42.69522,-73.7102],[42.69506,-73.71021],[42.6949,-73.71023],[42.69474,-73.71027],[42.69458,-73.71031],[42.69442,-73.71036],[42.69426,-73.71042],[42.69411,-73.71048],[42.69394,-73.71056],[42.6938,-73.71063],[42.69364,-73.71073],[42.6935,-73.71082],[42.69334,-73.71094],[42.69313,-73.71111],[42.69291,-73.71129],[42.69263,-73.71155],[42.69206,-73.71197],[42.69181,-73.71223],[42.69156,-73.71254],[42.69132,-73.71282],[42.68957,-73.71488],[42.68921,-73.71528],[42.68901,-73.71552],[42.68883,-73.71572],[42.687,-73.71788],[42.68549,-73.71966],[42.68483,-73.72036],[42.68457,-73.72061],[42.6843,-73.72087],[42.68403,-73.72112],[42.68375,-73.72136],[42.68345,-73.72161],[42.68317,-73.72182],[42.68287,-73.72205],[42.68259,-73.72226],[42.6823,-73.72245],[42.68198,-73.72266],[42.68167,-73.72284],[42.68137,-73.72301],[42.68106,-73.72318],[42.68077,-73.72333],[42.68045,-73.72348],[42.68014,-73.72362],[42.67983,-73.72374],[42.67714,-73.72485],[42.67669,-73.72504],[42.6762,-73.72524],[42.67588,-73.72538],[42.67567,-73.72547],[42.67545,-73.72557],[42.67525,-73.72567],[42.67504,-73.72577],[42.67484,-73.72589],[42.67464,-73.72601],[42.67443,-73.72614],[42.67423,-73.72628],[42.67402,-73.72643],[42.67383,-73.72658],[42.67362,-73.72675],[42.67342,-73.72693],[42.67327,-73.72707],[42.673,-73.72739],[42.67287,-73.72752],[42.67269,-73.72771],[42.67245,-73.72797],[42.6722,-73.72826],[42.67191,-73.72857],[42.67178,-73.72872],[42.6716,-73.72891],[42.67143,-73.7291],[42.67126,-73.7293],[42.6711,-73.72951],[42.67094,-73.7297],[42.67078,-73.72991],[42.67062,-73.73012],[42.67046,-73.73035],[42.6703,-73.73059],[42.67014,-73.73083],[42.66998,-73.73107],[42.66963,-73.73164],[42.66946,-73.73188],[42.66902,-73.73259],[42.66896,-73.73268],[42.66891,-73.73276],[42.66885,-73.73283],[42.66879,-73.7329],[42.66873,-73.73295],[42.66868,-73.73299],[42.66862,-73.73303],[42.66854,-73.73307],[42.66846,-73.73311],[42.66839,-73.73313],[42.66832,-73.73314],[42.66825,-73.73315],[42.66817,-73.73314],[42.66809,-73.73313],[42.66712,-73.733],[42.66704,-73.73299],[42.66697,-73.73297],[42.66691,-73.73295],[42.66685,-73.73292],[42.66678,-73.73289],[42.66673,-73.73286],[42.66666,-73.7328],[42.66661,-73.73275],[42.66656,-73.7327],[42.66651,-73.73264],[42.66647,-73.73259],[42.66642,-73.73251],[42.66638,-73.73242],[42.66634,-73.73233],[42.6663,-73.73224],[42.66626,-73.73214],[42.66607,-73.73164],[42.66597,-73.7314],[42.66589,-73.73121],[42.66565,-73.73058],[42.6656,-73.73045],[42.66554,-73.73033],[42.66549,-73.73022],[42.66544,-73.73011],[42.66517,-73.72953],[42.66315,-73.72581],[42.66286,-73.72528],[42.66233,-73.72451],[42.66224,-73.7244],[42.66216,-73.7243],[42.66207,-73.7242],[42.66197,-73.7241],[42.66188,-73.72401],[42.66179,-73.72393],[42.6617,-73.72385],[42.6616,-73.72378],[42.6615,-73.72372],[42.66138,-73.72365],[42.66125,-73.72358],[42.66113,-73.72353],[42.66099,-73.72348],[42.66086,-73.72343],[42.65987,-73.72313],[42.65981,-73.72311],[42.65978,-73.72327],[42.65977,-73.72334],[42.65973,-73.72355],[42.65968,-73.72374],[42.65946,-73.7245],[42.6594,-73.72468],[42.65904,-73.72582],[42.65888,-73.72631],[42.65866,-73.727],[42.65864,-73.72708],[42.65859,-73.72721],[42.65855,-73.72735],[42.65806,-73.72889],[42.658,-73.72909],[42.6578,-73.7297],[42.65777,-73.72978],[42.65768,-73.73002],[42.65743,-73.73075],[42.65741,-73.73085],[42.65729,-73.73091],[42.65729,-73.73091],[42.65687,-73.73113],[42.65676,-73.73119],[42.65654,-73.7313],[42.65611,-73.73153],[42.65606,-73.73155],[42.656,-73.73159],[42.65566,-73.73178],[42.65551,-73.73181],[42.65533,-73.73183],[42.65514,-73.73186],[42.65427,-73.7323],[42.65423,-73.73232],[42.6542,-73.73234],[42.65359,-73.73264],[42.65292,-73.733],[42.65288,-73.73302],[42.65224,-73.73345],[42.65218,-73.7335],[42.65194,-73.73363],[42.65183,-73.73369],[42.65066,-73.73428],[42.65062,-73.73431],[42.65056,-73.73434],[42.64969,-73.73476],[42.64962,-73.7348],[42.64958,-73.73482],[42.64876,-73.73523],[42.6487,-73.73526],[42.64866,-73.73529],[42.64775,-73.73573],[42.6477,-73.73575],[42.64765,-73.73578],[42.64663,-73.73629],[42.64655,-73.73633],[42.64652,-73.73635],[42.64583,-73.73669],[42.6458,-73.73671],[42.64553,-73.73684],[42.64544,-73.73688],[42.64545,-73.73695],[42.64564,-73.73762],[42.64566,-73.73771],[42.64558,-73.73773],[42.64482,-73.73795],[42.6447,-73.73721],[42.64447,-73.73586]],
+  s3: [[42.53136,-73.74916],[42.53136,-73.74916],[42.53144,-73.74967],[42.53157,-73.75059],[42.53158,-73.75071],[42.53158,-73.75078],[42.5316,-73.75191],[42.53161,-73.75201],[42.53164,-73.7521],[42.5317,-73.75223],[42.53173,-73.75231],[42.53175,-73.75235],[42.53181,-73.75249],[42.53185,-73.75261],[42.53187,-73.75272],[42.53188,-73.75283],[42.53188,-73.75291],[42.53187,-73.75298],[42.53184,-73.75312],[42.53172,-73.75366],[42.53138,-73.755],[42.53131,-73.75534],[42.53125,-73.75563],[42.53127,-73.75574],[42.53137,-73.75633],[42.53257,-73.75586],[42.53297,-73.75568],[42.53407,-73.75513],[42.53482,-73.75474],[42.53595,-73.75405],[42.53655,-73.75366],[42.5369,-73.75342],[42.53843,-73.75239],[42.53887,-73.75211],[42.53965,-73.75165],[42.53991,-73.75147],[42.54003,-73.75137],[42.54033,-73.7511],[42.54071,-73.75071],[42.54084,-73.75058],[42.54118,-73.75023],[42.54148,-73.74994],[42.54161,-73.74983],[42.54164,-73.7498],[42.54196,-73.74962],[42.54212,-73.74952],[42.54228,-73.74943],[42.54254,-73.74932],[42.54285,-73.74923],[42.54332,-73.74913],[42.54361,-73.74907],[42.54445,-73.74891],[42.54651,-73.7486],[42.54684,-73.74854],[42.54776,-73.74837],[42.54919,-73.7481],[42.55042,-73.74782],[42.55074,-73.74769],[42.55082,-73.74765],[42.55103,-73.74753],[42.5511,-73.74747],[42.552,-73.74679],[42.55295,-73.74604],[42.55359,-73.74555],[42.55389,-73.74533],[42.55413,-73.74519],[42.55447,-73.74505],[42.55476,-73.74498],[42.55494,-73.74495],[42.55524,-73.74494],[42.55572,-73.74494],[42.5566,-73.74514],[42.55736,-73.74529],[42.55783,-73.74537],[42.55785,-73.74537],[42.55895,-73.74547],[42.55926,-73.74543],[42.55948,-73.74538],[42.55964,-73.74533],[42.55979,-73.74527],[42.56011,-73.74509],[42.56027,-73.74496],[42.56117,-73.7444],[42.56199,-73.74393],[42.56223,-73.74378],[42.5626,-73.74354],[42.56275,-73.74344],[42.56381,-73.74279],[42.56454,-73.7424],[42.56556,-73.74176],[42.56635,-73.74128],[42.56674,-73.74104],[42.56716,-73.74079],[42.56856,-73.73994],[42.56965,-73.73926],[42.56996,-73.73907],[42.57073,-73.73861],[42.571,-73.73847],[42.57123,-73.73836],[42.57152,-73.73824],[42.57245,-73.73794],[42.57275,-73.73786],[42.57366,-73.73772],[42.57396,-73.7377],[42.57513,-73.7377],[42.57549,-73.73773],[42.57578,-73.73777],[42.57638,-73.73789],[42.57675,-73.73798],[42.57782,-73.73831],[42.57823,-73.73845],[42.57831,-73.73847],[42.58046,-73.73914],[42.58122,-73.73938],[42.58192,-73.73958],[42.58232,-73.73969],[42.58396,-73.73995],[42.58419,-73.73999],[42.58441,-73.74003],[42.58719,-73.74056],[42.58743,-73.74062],[42.58989,-73.74124],[42.59187,-73.74174],[42.59218,-73.74185],[42.5922,-73.74185],[42.59229,-73.7419],[42.59262,-73.74206],[42.5934,-73.74261],[42.59388,-73.74296],[42.59401,-73.74306],[42.59508,-73.74388],[42.59553,-73.74415],[42.59577,-73.74426],[42.5964,-73.74451],[42.59678,-73.74463],[42.59847,-73.74518],[42.59884,-73.74531],[42.59962,-73.74556],[42.60015,-73.74573],[42.60155,-73.74616],[42.6016,-73.74618],[42.60261,-73.74648],[42.60357,-73.7468],[42.60452,-73.74711],[42.60538,-73.74735],[42.6057,-73.74745],[42.60601,-73.74752],[42.60647,-73.74758],[42.60713,-73.74765],[42.60843,-73.74781],[42.60997,-73.74797],[42.61041,-73.74798],[42.61088,-73.74796],[42.61124,-73.74789],[42.61211,-73.74769],[42.61324,-73.74746],[42.6143,-73.74724],[42.61482,-73.74713],[42.61647,-73.7467],[42.61649,-73.7467],[42.6167,-73.74663],[42.61837,-73.7461],[42.61932,-73.74579],[42.61973,-73.74565],[42.61992,-73.74558],[42.62076,-73.74537],[42.62149,-73.74523],[42.62182,-73.74517],[42.62217,-73.74511],[42.62336,-73.7449],[42.62447,-73.7447],[42.62502,-73.7446],[42.62615,-73.74439],[42.62646,-73.74433],[42.62776,-73.74405],[42.62791,-73.74401],[42.62804,-73.74397],[42.62817,-73.74393],[42.62822,-73.74385],[42.62828,-73.74377],[42.62834,-73.74371],[42.62856,-73.74352],[42.62864,-73.74346],[42.62872,-73.7434],[42.62881,-73.74335],[42.62889,-73.74331],[42.62897,-73.74327],[42.62906,-73.74325],[42.62915,-73.74322],[42.62966,-73.74314],[42.6302,-73.74305],[42.63023,-73.74331],[42.63027,-73.74345],[42.63028,-73.7436],[42.63031,-73.74369],[42.63032,-73.74373],[42.63034,-73.74378],[42.63039,-73.74387],[42.63046,-73.74396],[42.63069,-73.7441],[42.63119,-73.7444],[42.63158,-73.74463],[42.63242,-73.7451],[42.63276,-73.74529],[42.63281,-73.74532],[42.63298,-73.74541],[42.63314,-73.7455],[42.6332,-73.74552],[42.6334,-73.74563],[42.63351,-73.74568],[42.63354,-73.7457],[42.63372,-73.7458],[42.63391,-73.7459],[42.63404,-73.74597],[42.63409,-73.746],[42.63414,-73.74603],[42.63417,-73.74605],[42.63427,-73.74611],[42.63442,-73.74621],[42.63452,-73.74627],[42.63456,-73.7463],[42.63485,-73.74648],[42.63495,-73.74654],[42.63506,-73.74661],[42.63509,-73.74663],[42.63531,-73.74677],[42.63539,-73.74681],[42.63552,-73.74689],[42.63649,-73.74749],[42.6366,-73.74756],[42.63706,-73.74785],[42.63743,-73.74808],[42.63754,-73.74815],[42.63766,-73.74822],[42.6378,-73.7483],[42.6379,-73.74835],[42.63801,-73.74841],[42.63811,-73.74845],[42.63822,-73.74848],[42.63834,-73.74851],[42.63845,-73.74852],[42.63856,-73.74853],[42.63867,-73.74853],[42.63879,-73.74852],[42.6389,-73.7485],[42.63901,-73.74847],[42.63911,-73.74844],[42.63921,-73.74839],[42.6393,-73.74835],[42.63946,-73.74822],[42.6396,-73.7481],[42.63972,-73.74797],[42.63984,-73.74783],[42.63994,-73.74771],[42.64002,-73.74756],[42.64011,-73.7474],[42.64019,-73.74724],[42.64047,-73.74664],[42.64056,-73.74641],[42.64071,-73.74611],[42.64107,-73.74533],[42.64113,-73.74521],[42.6412,-73.74509],[42.64126,-73.74497],[42.64133,-73.74486],[42.64141,-73.74475],[42.64149,-73.74465],[42.64156,-73.74455],[42.64165,-73.74445],[42.64173,-73.74436],[42.64178,-73.74432],[42.64182,-73.74428],[42.64187,-73.74424],[42.64191,-73.7442],[42.64196,-73.74416],[42.64201,-73.74413],[42.64206,-73.7441],[42.64211,-73.74408],[42.64216,-73.74406],[42.64221,-73.74405],[42.64227,-73.74404],[42.64232,-73.74404],[42.64237,-73.74405],[42.64242,-73.74406],[42.64248,-73.74408],[42.64253,-73.7441],[42.64258,-73.74413],[42.64263,-73.74416],[42.64267,-73.7442],[42.64272,-73.74425],[42.64276,-73.74429],[42.64279,-73.74435],[42.64283,-73.7444],[42.64286,-73.74446],[42.64289,-73.74452],[42.64291,-73.74459],[42.64293,-73.74465],[42.64295,-73.74473],[42.64296,-73.7448],[42.64296,-73.74487],[42.64297,-73.74494],[42.64296,-73.74501],[42.64296,-73.74509],[42.64295,-73.74516],[42.64289,-73.74589],[42.64288,-73.74597],[42.64288,-73.74604],[42.64287,-73.74611],[42.64288,-73.74619],[42.64288,-73.74627],[42.64289,-73.74634],[42.6429,-73.74641],[42.64299,-73.74682],[42.64301,-73.74693],[42.64326,-73.74775],[42.64351,-73.74845],[42.64357,-73.74861],[42.64363,-73.74874],[42.64366,-73.74881],[42.64369,-73.74887],[42.64376,-73.74898],[42.64411,-73.74947],[42.64448,-73.74995],[42.64458,-73.75008],[42.64464,-73.75018],[42.64467,-73.75024],[42.64471,-73.75031],[42.64473,-73.75037],[42.64476,-73.75044],[42.64478,-73.7505],[42.64479,-73.75057],[42.64481,-73.75065],[42.64482,-73.75072],[42.64482,-73.7508],[42.64482,-73.75088],[42.64482,-73.75098],[42.64482,-73.75109],[42.6448,-73.75118],[42.64479,-73.75126],[42.64477,-73.75134],[42.64474,-73.75142],[42.64471,-73.7515],[42.64466,-73.75159],[42.64459,-73.7517],[42.64452,-73.75178],[42.64445,-73.75185],[42.64438,-73.75191],[42.64431,-73.75195],[42.64425,-73.75199],[42.64418,-73.75202],[42.64411,-73.75203],[42.64404,-73.75205],[42.64391,-73.75205],[42.6438,-73.75206],[42.64302,-73.75204],[42.64291,-73.75204],[42.64283,-73.75204],[42.64274,-73.75205],[42.64265,-73.75207],[42.64257,-73.75208],[42.64251,-73.7521],[42.64243,-73.75213],[42.64233,-73.75216],[42.64218,-73.75225],[42.64198,-73.75234],[42.64188,-73.7524],[42.64097,-73.75277],[42.64077,-73.75287],[42.64057,-73.75297],[42.6404,-73.75306],[42.64023,-73.75314],[42.63999,-73.75319],[42.63951,-73.75352],[42.63924,-73.75377],[42.63897,-73.75406],[42.63878,-73.75431],[42.6386,-73.75455],[42.6383,-73.75497],[42.63805,-73.75535],[42.63778,-73.75579],[42.63763,-73.75605],[42.63748,-73.75644],[42.63723,-73.7569],[42.63709,-73.7572],[42.63673,-73.75798],[42.63659,-73.75827],[42.63648,-73.75856],[42.63629,-73.75904],[42.63593,-73.75997],[42.6357,-73.7604],[42.6352,-73.76133],[42.63519,-73.76135],[42.63506,-73.7616],[42.63502,-73.76167],[42.635,-73.76172],[42.63499,-73.76177],[42.63499,-73.76184],[42.63499,-73.76189],[42.63502,-73.76197],[42.63505,-73.76204],[42.63507,-73.76213],[42.63507,-73.7622],[42.63507,-73.76225],[42.63506,-73.76232],[42.63497,-73.76241],[42.63495,-73.76244],[42.63472,-73.7627],[42.63461,-73.76282],[42.6345,-73.76293],[42.63439,-73.76304],[42.63429,-73.76314],[42.63418,-73.76323],[42.63407,-73.76333],[42.63396,-73.76342],[42.63378,-73.76354],[42.63369,-73.76361],[42.63315,-73.76394],[42.63274,-73.7642],[42.63216,-73.76457],[42.63208,-73.76463],[42.63201,-73.76467],[42.63193,-73.76472],[42.63129,-73.76511],[42.63083,-73.7654],[42.63072,-73.76547],[42.63016,-73.76584],[42.63,-73.76595],[42.62989,-73.76601],[42.62977,-73.7661],[42.62941,-73.76633],[42.62939,-73.76634],[42.62879,-73.7667],[42.62859,-73.76682],[42.62832,-73.767],[42.62815,-73.7671],[42.62812,-73.76713],[42.62776,-73.76735],[42.62743,-73.76754],[42.62736,-73.76758],[42.62692,-73.76783],[42.62626,-73.76819],[42.62593,-73.76834],[42.62577,-73.76842],[42.62561,-73.76847],[42.62552,-73.76851],[42.62539,-73.76853],[42.62519,-73.76855],[42.62509,-73.76856],[42.62492,-73.76855],[42.62468,-73.76854],[42.6245,-73.76852],[42.62428,-73.76849],[42.624,-73.76842],[42.62364,-73.76829],[42.62309,-73.76801],[42.62271,-73.76782],[42.62149,-73.76725],[42.62127,-73.76714],[42.62129,-73.76707],[42.62129,-73.76702],[42.6213,-73.76697],[42.6213,-73.7669],[42.62129,-73.76684],[42.62129,-73.76678],[42.62115,-73.76583],[42.62115,-73.76552],[42.62116,-73.76535],[42.62116,-73.76523],[42.62118,-73.76499],[42.62119,-73.76469],[42.62121,-73.76422],[42.62123,-73.76411],[42.62123,-73.76406],[42.62123,-73.76401],[42.6214,-73.76401],[42.62202,-73.76399],[42.6222,-73.76399],[42.62244,-73.76401],[42.62255,-73.76399],[42.62261,-73.76397],[42.62268,-73.76392],[42.62272,-73.76381],[42.62274,-73.76368],[42.62272,-73.76358],[42.62266,-73.76337],[42.62251,-73.76281],[42.62215,-73.76144],[42.62211,-73.76129],[42.62203,-73.76097],[42.62187,-73.7604],[42.62186,-73.76028],[42.62186,-73.76019],[42.62179,-73.76017],[42.62168,-73.76013],[42.62163,-73.76007],[42.62138,-73.75907]],
+  s4: [[42.81428,-73.93981],[42.81443,-73.93971],[42.81449,-73.93968],[42.81455,-73.93967],[42.81457,-73.93979],[42.81467,-73.94024],[42.8147,-73.94042],[42.81472,-73.94048],[42.81473,-73.94054],[42.81482,-73.94104],[42.81483,-73.94109],[42.81491,-73.94153],[42.81491,-73.94158],[42.81487,-73.94161],[42.81436,-73.94192],[42.81393,-73.94221],[42.81343,-73.94256],[42.81332,-73.94261],[42.8132,-73.94267],[42.81266,-73.943],[42.81236,-73.94319],[42.81233,-73.94321],[42.81215,-73.9433],[42.81173,-73.94356],[42.81166,-73.9436],[42.81146,-73.94372],[42.811,-73.94399],[42.81094,-73.94405],[42.81081,-73.94412],[42.81019,-73.94449],[42.81012,-73.94453],[42.80997,-73.94462],[42.80968,-73.9448],[42.80957,-73.94486],[42.80941,-73.94496],[42.80933,-73.94501],[42.80913,-73.94512],[42.80907,-73.94516],[42.80869,-73.94539],[42.80866,-73.94541],[42.80815,-73.94572],[42.8081,-73.94574],[42.8079,-73.94585],[42.80753,-73.94606],[42.80746,-73.94616],[42.80713,-73.94635],[42.80696,-73.9464],[42.80615,-73.94687],[42.80606,-73.947],[42.80596,-73.94705],[42.80582,-73.94707],[42.80561,-73.9472],[42.80545,-73.9474],[42.80538,-73.94748],[42.80532,-73.94756],[42.80527,-73.94765],[42.80523,-73.94774],[42.80519,-73.94782],[42.80516,-73.94791],[42.80515,-73.94797],[42.80514,-73.948],[42.80502,-73.94853],[42.80491,-73.94835],[42.80484,-73.94825],[42.80476,-73.94816],[42.80459,-73.94795],[42.80443,-73.94775],[42.80428,-73.94754],[42.80413,-73.94732],[42.80399,-73.9471],[42.80385,-73.94687],[42.80335,-73.94596],[42.80316,-73.94562],[42.80298,-73.94526],[42.80261,-73.94452],[42.80241,-73.94415],[42.80224,-73.94381],[42.80206,-73.9434],[42.80188,-73.94302],[42.80171,-73.94263],[42.80155,-73.94224],[42.80108,-73.94105],[42.80092,-73.94067],[42.80075,-73.94028],[42.8003,-73.93927],[42.80012,-73.93888],[42.79996,-73.93849],[42.79981,-73.93809],[42.79967,-73.93769],[42.79952,-73.93727],[42.7994,-73.93686],[42.79928,-73.93644],[42.79915,-73.93602],[42.79888,-73.93511],[42.7984,-73.93346],[42.7983,-73.93312],[42.79819,-73.93277],[42.79808,-73.93244],[42.79796,-73.9321],[42.79784,-73.93177],[42.79774,-73.93151],[42.79763,-73.93127],[42.79752,-73.931],[42.79741,-73.93075],[42.79729,-73.9305],[42.79716,-73.93026],[42.79704,-73.93003],[42.7969,-73.92979],[42.79676,-73.92956],[42.79662,-73.92934],[42.79647,-73.92913],[42.79632,-73.92893],[42.79616,-73.92873],[42.79599,-73.92853],[42.79582,-73.92836],[42.79564,-73.92821],[42.79545,-73.92806],[42.79527,-73.92793],[42.79507,-73.92781],[42.79488,-73.92771],[42.79467,-73.92762],[42.79414,-73.92739],[42.79393,-73.92729],[42.79372,-73.92719],[42.79352,-73.92708],[42.79331,-73.92696],[42.79311,-73.92684],[42.79231,-73.92633],[42.79211,-73.92622],[42.79191,-73.9261],[42.79171,-73.92599],[42.79151,-73.92589],[42.7913,-73.92579],[42.79109,-73.9257],[42.79089,-73.92562],[42.79068,-73.92554],[42.79046,-73.92547],[42.79023,-73.92539],[42.78919,-73.92506],[42.78886,-73.92496],[42.78854,-73.92484],[42.78822,-73.92473],[42.78578,-73.92383],[42.78552,-73.92374],[42.78525,-73.92366],[42.78499,-73.92359],[42.78472,-73.92352],[42.78445,-73.92346],[42.78418,-73.92342],[42.78391,-73.92338],[42.78364,-73.92336],[42.78337,-73.92334],[42.78309,-73.92333],[42.78282,-73.92332],[42.78255,-73.92333],[42.78228,-73.92335],[42.78201,-73.92338],[42.78173,-73.92341],[42.78147,-73.92346],[42.78119,-73.92351],[42.78092,-73.92358],[42.78066,-73.92365],[42.78043,-73.92372],[42.78018,-73.9238],[42.77996,-73.92388],[42.77975,-73.92396],[42.77954,-73.92405],[42.77933,-73.92415],[42.77916,-73.92423],[42.77839,-73.92461],[42.7777,-73.92495],[42.77739,-73.92511],[42.77707,-73.92526],[42.77676,-73.92539],[42.77644,-73.92552],[42.77611,-73.92563],[42.77579,-73.92574],[42.77567,-73.92577],[42.77547,-73.92583],[42.77513,-73.92591],[42.77482,-73.92598],[42.77449,-73.92605],[42.77411,-73.92612],[42.77004,-73.92696],[42.76971,-73.92703],[42.76939,-73.92711],[42.76906,-73.92719],[42.76839,-73.92738],[42.76809,-73.92747],[42.76777,-73.92757],[42.76745,-73.92768],[42.76714,-73.92779],[42.76523,-73.9285],[42.76491,-73.92862],[42.76459,-73.92875],[42.76428,-73.92889],[42.76397,-73.92902],[42.76364,-73.92917],[42.76329,-73.92934],[42.76294,-73.92951],[42.76274,-73.92962],[42.76253,-73.92974],[42.76234,-73.92985],[42.76216,-73.92998],[42.76196,-73.93013],[42.76176,-73.9303],[42.76155,-73.93049],[42.76134,-73.9307],[42.76114,-73.93092],[42.76097,-73.93112],[42.76092,-73.93119],[42.76082,-73.93131],[42.76068,-73.93151],[42.76042,-73.93189],[42.75989,-73.93264],[42.75979,-73.93278],[42.75966,-73.93294],[42.75954,-73.93306],[42.75943,-73.93316],[42.75931,-73.93324],[42.75919,-73.93329],[42.75909,-73.93334],[42.75897,-73.93338],[42.75885,-73.9334],[42.75874,-73.93342],[42.75862,-73.93342],[42.75851,-73.93341],[42.75839,-73.93339],[42.75828,-73.93336],[42.75817,-73.93332],[42.75805,-73.93328],[42.75797,-73.93324],[42.75642,-73.93248],[42.75612,-73.93233],[42.75593,-73.93227],[42.75578,-73.93228],[42.75566,-73.93232],[42.75548,-73.93242],[42.75537,-73.93249],[42.75527,-73.93258],[42.75516,-73.93268],[42.75425,-73.93347],[42.75377,-73.93391],[42.75319,-73.93443],[42.75312,-73.9345],[42.75305,-73.93455],[42.75297,-73.93461],[42.75289,-73.93465],[42.75281,-73.93468],[42.75273,-73.9347],[42.75265,-73.93471],[42.75257,-73.93472],[42.75248,-73.9347],[42.7524,-73.93468],[42.75231,-73.93465],[42.75222,-73.93461],[42.75214,-73.93454],[42.75206,-73.93448],[42.75199,-73.93439],[42.75193,-73.9343],[42.75187,-73.9342],[42.75182,-73.93409],[42.75177,-73.93397],[42.75174,-73.93384],[42.75171,-73.9337],[42.7517,-73.93355],[42.7517,-73.93341],[42.75171,-73.93329],[42.75173,-73.93316],[42.7519,-73.932],[42.75192,-73.93186],[42.75194,-73.93171],[42.75196,-73.93156],[42.75197,-73.93142],[42.75198,-73.93127],[42.75198,-73.93111],[42.75198,-73.93097],[42.75197,-73.93082],[42.75196,-73.93068],[42.75194,-73.93053],[42.75193,-73.93039],[42.7519,-73.93024],[42.75187,-73.93009],[42.75185,-73.92996],[42.75182,-73.92983],[42.75178,-73.92969],[42.75173,-73.92956],[42.75169,-73.92944],[42.75164,-73.92931],[42.75158,-73.92918],[42.75152,-73.92905],[42.75145,-73.92891],[42.75061,-73.92731],[42.7495,-73.92534],[42.7493,-73.925],[42.7491,-73.92465],[42.74889,-73.92431],[42.74867,-73.92397],[42.74845,-73.92364],[42.74823,-73.92331],[42.748,-73.923],[42.74777,-73.92268],[42.74753,-73.92236],[42.74741,-73.92221],[42.74729,-73.92206],[42.74704,-73.92176],[42.7468,-73.92147],[42.74655,-73.92117],[42.74631,-73.92086],[42.74607,-73.92056],[42.74583,-73.92024],[42.7456,-73.91993],[42.74537,-73.91961],[42.74514,-73.91929],[42.74492,-73.91896],[42.74469,-73.91863],[42.74448,-73.91829],[42.74426,-73.91794],[42.74405,-73.9176],[42.74212,-73.91445],[42.74033,-73.91154],[42.73891,-73.90922],[42.73869,-73.90886],[42.73849,-73.90853],[42.73829,-73.90818],[42.73808,-73.90781],[42.73788,-73.90746],[42.73768,-73.9071],[42.73749,-73.90673],[42.73731,-73.90637],[42.73674,-73.90526],[42.73655,-73.90488],[42.73637,-73.90453],[42.73618,-73.90416],[42.73598,-73.9038],[42.73578,-73.90345],[42.73558,-73.9031],[42.73537,-73.90275],[42.73516,-73.9024],[42.73495,-73.90206],[42.73473,-73.90172],[42.73452,-73.90139],[42.73429,-73.90105],[42.73407,-73.90073],[42.73384,-73.90039],[42.73362,-73.90009],[42.73338,-73.89977],[42.73315,-73.89946],[42.7329,-73.89914],[42.73267,-73.89884],[42.73243,-73.89854],[42.73218,-73.89824],[42.73195,-73.89796],[42.73169,-73.89763],[42.73144,-73.89732],[42.73121,-73.89702],[42.73098,-73.8967],[42.73074,-73.89639],[42.73065,-73.89626],[42.73051,-73.89606],[42.72738,-73.89166],[42.72374,-73.88652],[42.7235,-73.8862],[42.72329,-73.88588],[42.72306,-73.88555],[42.72284,-73.88522],[42.72262,-73.88488],[42.72241,-73.88454],[42.7222,-73.8842],[42.72199,-73.88385],[42.72178,-73.88349],[42.72158,-73.88315],[42.72138,-73.8828],[42.72118,-73.88243],[42.72099,-73.88207],[42.7208,-73.8817],[42.72062,-73.88133],[42.72044,-73.88096],[42.72026,-73.88059],[42.72008,-73.88021],[42.71991,-73.87984],[42.71974,-73.87946],[42.71957,-73.87908],[42.71941,-73.87869],[42.71924,-73.87828],[42.71908,-73.8779],[42.71892,-73.87751],[42.71875,-73.87712],[42.71858,-73.87674],[42.71841,-73.87636],[42.71823,-73.87598],[42.71805,-73.8756],[42.71787,-73.87523],[42.71769,-73.87486],[42.71765,-73.87478],[42.7175,-73.87449],[42.71731,-73.87413],[42.71712,-73.87377],[42.71692,-73.87341],[42.71673,-73.87306],[42.71653,-73.87271],[42.71632,-73.87235],[42.71612,-73.87201],[42.71591,-73.87166],[42.7157,-73.87133],[42.71492,-73.87009],[42.7127,-73.86656],[42.71248,-73.86622],[42.71227,-73.86589],[42.71205,-73.86556],[42.71183,-73.86522],[42.7116,-73.86489],[42.71138,-73.86457],[42.71115,-73.86424],[42.71093,-73.86391],[42.7107,-73.8636],[42.71047,-73.86327],[42.71024,-73.86295],[42.71021,-73.86291],[42.71001,-73.86263],[42.70977,-73.86232],[42.70954,-73.86201],[42.7093,-73.86169],[42.70907,-73.86139],[42.70883,-73.86108],[42.70859,-73.86078],[42.70835,-73.86047],[42.70758,-73.85941],[42.70734,-73.85909],[42.70712,-73.85877],[42.70692,-73.85844],[42.70672,-73.8581],[42.70652,-73.85773],[42.70634,-73.85737],[42.70617,-73.857],[42.70601,-73.85663],[42.70587,-73.85625],[42.70571,-73.85582],[42.70556,-73.85537],[42.70521,-73.85421],[42.70512,-73.85395],[42.70502,-73.85368],[42.70491,-73.85343],[42.7048,-73.85317],[42.70466,-73.85288],[42.70451,-73.8526],[42.70434,-73.8523],[42.70417,-73.85201],[42.7033,-73.85063],[42.70316,-73.8504],[42.70302,-73.85016],[42.7029,-73.84992],[42.70279,-73.84967],[42.70268,-73.8494],[42.70259,-73.84913],[42.7025,-73.84886],[42.70242,-73.84858],[42.70211,-73.84748],[42.70202,-73.84718],[42.70192,-73.84691],[42.70182,-73.84665],[42.7017,-73.84639],[42.70157,-73.84615],[42.70143,-73.84592],[42.70128,-73.8457],[42.70112,-73.8455],[42.70095,-73.84531],[42.70078,-73.84513],[42.70072,-73.84507],[42.7006,-73.84498],[42.70044,-73.84487],[42.70021,-73.84473],[42.69955,-73.84435],[42.69916,-73.84412],[42.6987,-73.84384],[42.69847,-73.84371],[42.69823,-73.84357],[42.69791,-73.84338],[42.69726,-73.84295],[42.69708,-73.84284],[42.69694,-73.84274],[42.69677,-73.84261],[42.69662,-73.84247],[42.69652,-73.84237],[42.69637,-73.84222],[42.69625,-73.84209],[42.6961,-73.8419],[42.69593,-73.84166],[42.69581,-73.84145],[42.69573,-73.84133],[42.6956,-73.84109],[42.69549,-73.84083],[42.69539,-73.84057],[42.6953,-73.8403],[42.69521,-73.84001],[42.69515,-73.83974],[42.69509,-73.83945],[42.69505,-73.83916],[42.69502,-73.83888],[42.695,-73.83857],[42.69498,-73.83827],[42.69483,-73.83494],[42.69481,-73.83439],[42.69478,-73.83402],[42.69475,-73.83365],[42.69471,-73.83329],[42.69466,-73.83293],[42.69459,-73.83258],[42.69451,-73.83219],[42.69442,-73.83188],[42.69432,-73.83147],[42.6942,-73.83101],[42.69407,-73.83055],[42.69395,-73.83008],[42.69308,-73.82693],[42.69222,-73.82455],[42.69217,-73.82442],[42.69212,-73.82432],[42.69205,-73.82421],[42.69196,-73.82412],[42.69188,-73.82405],[42.69179,-73.82401],[42.69169,-73.82398],[42.6916,-73.82397],[42.6915,-73.82398],[42.69141,-73.82401],[42.6914,-73.82401],[42.69134,-73.82403],[42.69128,-73.82407],[42.69113,-73.82417],[42.69076,-73.82443],[42.6906,-73.82451],[42.69049,-73.82472],[42.69044,-73.82487],[42.69041,-73.82497],[42.69039,-73.82512],[42.69037,-73.8254],[42.69038,-73.82552],[42.6904,-73.82574],[42.69043,-73.82621],[42.6904,-73.82649],[42.69035,-73.82666],[42.69028,-73.82683],[42.69014,-73.82704],[42.69006,-73.82713],[42.69001,-73.82718],[42.68953,-73.82768],[42.68946,-73.82774],[42.68939,-73.82779],[42.68935,-73.82782],[42.68929,-73.82784],[42.68866,-73.82802],[42.68858,-73.82805],[42.6885,-73.8281],[42.6884,-73.82815],[42.68832,-73.82822],[42.68775,-73.82883],[42.68767,-73.82892],[42.68764,-73.82886],[42.68747,-73.82854],[42.68741,-73.82834],[42.68739,-73.82827],[42.68738,-73.82824],[42.68733,-73.82807],[42.68731,-73.82799],[42.68727,-73.8279],[42.68722,-73.82782],[42.68708,-73.82756],[42.68704,-73.8275],[42.68706,-73.8274],[42.68706,-73.82737],[42.68706,-73.82733],[42.68708,-73.82729],[42.68711,-73.82722],[42.68719,-73.82711],[42.68737,-73.82691],[42.68757,-73.82672],[42.68768,-73.82662],[42.68766,-73.82659],[42.68761,-73.82648],[42.68761,-73.8264],[42.68764,-73.82633],[42.68769,-73.82627],[42.68791,-73.82604]],
+  s5: [[42.64524,-73.75565],[42.64534,-73.7556],[42.64536,-73.75569],[42.64548,-73.75564],[42.64556,-73.75572],[42.64562,-73.75598],[42.64583,-73.75587],[42.64597,-73.75581],[42.64603,-73.75577],[42.64601,-73.75569],[42.64594,-73.75545],[42.64579,-73.75494],[42.64576,-73.75482],[42.64584,-73.75478],[42.64617,-73.75463],[42.64626,-73.75459],[42.64631,-73.75457],[42.64651,-73.75449],[42.64688,-73.75433],[42.64695,-73.75431],[42.64732,-73.75417],[42.6474,-73.75414],[42.64792,-73.75393],[42.64803,-73.75388],[42.64835,-73.75374],[42.64873,-73.75358],[42.64877,-73.75356],[42.64884,-73.75352],[42.64914,-73.75332],[42.64919,-73.75328],[42.64931,-73.7532],[42.64966,-73.75291],[42.64969,-73.75289],[42.64977,-73.75282],[42.64987,-73.75274],[42.64999,-73.75263],[42.65003,-73.75261],[42.65032,-73.75238],[42.65049,-73.75225],[42.65056,-73.7522],[42.65062,-73.75215],[42.65066,-73.75213],[42.65111,-73.75182],[42.65122,-73.75175],[42.65129,-73.7517],[42.65161,-73.75148],[42.65167,-73.75144],[42.65173,-73.7514],[42.65214,-73.75112],[42.65219,-73.75108],[42.65225,-73.75105],[42.65231,-73.751],[42.65237,-73.75097],[42.65252,-73.75087],[42.65259,-73.75082],[42.65273,-73.75073],[42.65316,-73.75043],[42.65344,-73.75025],[42.65346,-73.75023],[42.65354,-73.75017],[42.65351,-73.75007],[42.65342,-73.74983],[42.65336,-73.74967],[42.65331,-73.74952],[42.65328,-73.74942],[42.65322,-73.7492],[42.65319,-73.74903],[42.65316,-73.74889],[42.65313,-73.74875],[42.65312,-73.74872],[42.6531,-73.7486],[42.65308,-73.74844],[42.65307,-73.74828],[42.65306,-73.74811],[42.65305,-73.74792],[42.65305,-73.74773],[42.65305,-73.74752],[42.65306,-73.74732],[42.65308,-73.74712],[42.6531,-73.74692],[42.65313,-73.74672],[42.65316,-73.74656],[42.65319,-73.74642],[42.65321,-73.74633],[42.65324,-73.74622],[42.65326,-73.74613],[42.65329,-73.74605],[42.65333,-73.74596],[42.65338,-73.74584],[42.65342,-73.74576],[42.65347,-73.74568],[42.65351,-73.7456],[42.65356,-73.74554],[42.65362,-73.74545],[42.65372,-73.74535],[42.65377,-73.7453],[42.65382,-73.74526],[42.65394,-73.74517],[42.65404,-73.74509],[42.65459,-73.74465],[42.65483,-73.74446],[42.65499,-73.74433],[42.6551,-73.74423],[42.65521,-73.74411],[42.65534,-73.74399],[42.65546,-73.74385],[42.65557,-73.74374],[42.6557,-73.74359],[42.65586,-73.7434],[42.65601,-73.74321],[42.65655,-73.74261],[42.65739,-73.74152],[42.65828,-73.74039],[42.65853,-73.74007],[42.65877,-73.73977],[42.65903,-73.73947],[42.65928,-73.73919],[42.65953,-73.73892],[42.65981,-73.73869],[42.65993,-73.73856],[42.66004,-73.73845],[42.66018,-73.73832],[42.66032,-73.73819],[42.66046,-73.73806],[42.6606,-73.73793],[42.66075,-73.73779],[42.6609,-73.73767],[42.66104,-73.73755],[42.66117,-73.73744],[42.66134,-73.73731],[42.66149,-73.73718],[42.66165,-73.73707],[42.66179,-73.73695],[42.66194,-73.73685],[42.66212,-73.73672],[42.66229,-73.7366],[42.66245,-73.7365],[42.66262,-73.73639],[42.66277,-73.73629],[42.66293,-73.73618],[42.66343,-73.73587],[42.66483,-73.73499],[42.66505,-73.73485],[42.66526,-73.73471],[42.66548,-73.73456],[42.66568,-73.73442],[42.66589,-73.73427],[42.66609,-73.73411],[42.66629,-73.73395],[42.66649,-73.73379],[42.66668,-73.73363],[42.66687,-73.73346],[42.66704,-73.73332],[42.66722,-73.73315],[42.66744,-73.73295],[42.66763,-73.73276],[42.66781,-73.73256],[42.668,-73.73237],[42.67206,-73.72807],[42.67246,-73.72763],[42.67282,-73.72724],[42.67301,-73.72705],[42.67321,-73.72686],[42.6734,-73.72669],[42.6736,-73.72652],[42.67379,-73.72636],[42.674,-73.7262],[42.67421,-73.72604],[42.67444,-73.72589],[42.67464,-73.72577],[42.67486,-73.72564],[42.67508,-73.72551],[42.6753,-73.7254],[42.67552,-73.7253],[42.67576,-73.7252],[42.67598,-73.7251],[42.67664,-73.72483],[42.67711,-73.72464],[42.67979,-73.72353],[42.6801,-73.7234],[42.68041,-73.72326],[42.68072,-73.72312],[42.68103,-73.72296],[42.68133,-73.7228],[42.68164,-73.72262],[42.68193,-73.72244],[42.68223,-73.72225],[42.68252,-73.72205],[42.68279,-73.72186],[42.6831,-73.72163],[42.68338,-73.72141],[42.68366,-73.72117],[42.68394,-73.72094],[42.68421,-73.72069],[42.68447,-73.72044],[42.68474,-73.72018],[42.685,-73.71991],[42.68525,-73.71963],[42.68551,-73.71935],[42.68771,-73.71673],[42.6887,-73.71559],[42.68911,-73.71511],[42.68956,-73.71459],[42.69092,-73.71298],[42.69121,-73.71264],[42.69146,-73.71235],[42.69172,-73.71207],[42.69197,-73.71179],[42.69223,-73.71153],[42.6925,-73.71127],[42.69277,-73.71103],[42.69306,-73.7108],[42.69335,-73.71058],[42.69363,-73.71037],[42.69393,-73.71018],[42.69423,-73.71],[42.69454,-73.70983],[42.69484,-73.70968],[42.69515,-73.70954],[42.69546,-73.70941],[42.69578,-73.70929],[42.6961,-73.70919],[42.69642,-73.70909],[42.69984,-73.7081],[42.70085,-73.70781],[42.7056,-73.70644],[42.71002,-73.70516],[42.71292,-73.70432],[42.71324,-73.70422],[42.71356,-73.70412],[42.71388,-73.70402],[42.7142,-73.7039],[42.71452,-73.70378],[42.71484,-73.70364],[42.71515,-73.7035],[42.7164,-73.70294],[42.71672,-73.7028],[42.71703,-73.70266],[42.71735,-73.70253],[42.71767,-73.70241],[42.72456,-73.69979],[42.72488,-73.69967],[42.72516,-73.69959],[42.72542,-73.69952],[42.7257,-73.69947],[42.72597,-73.69943],[42.72626,-73.69942],[42.72653,-73.69942],[42.72752,-73.69947],[42.7278,-73.69948],[42.72826,-73.69944],[42.72848,-73.69941],[42.72871,-73.69937],[42.72916,-73.69927],[42.72937,-73.6992],[42.72958,-73.69912],[42.73116,-73.69849],[42.73137,-73.6984],[42.73158,-73.69833],[42.7318,-73.69826],[42.73202,-73.69821],[42.73223,-73.69817],[42.73243,-73.69814],[42.73261,-73.69813],[42.7328,-73.69812],[42.73303,-73.69812],[42.73325,-73.69814],[42.73347,-73.69816],[42.73369,-73.6982],[42.73391,-73.69825],[42.73412,-73.69831],[42.73434,-73.69838],[42.73525,-73.69869],[42.73551,-73.69877],[42.73583,-73.69889],[42.73603,-73.69892],[42.73657,-73.69904],[42.7369,-73.69907],[42.7371,-73.69908],[42.73735,-73.69907],[42.73766,-73.69902],[42.73807,-73.69888],[42.73906,-73.69856],[42.73916,-73.69851],[42.73927,-73.69846],[42.73937,-73.6984],[42.73946,-73.69834],[42.73956,-73.69827],[42.73965,-73.69819],[42.73974,-73.69811],[42.73982,-73.69801],[42.7399,-73.69792],[42.73998,-73.69781],[42.74006,-73.6977],[42.74013,-73.69759],[42.7402,-73.69746],[42.74026,-73.69733],[42.74032,-73.69721],[42.74037,-73.69707],[42.74042,-73.69693],[42.74102,-73.69516],[42.74107,-73.695],[42.74111,-73.69486],[42.74114,-73.69471],[42.74117,-73.69456],[42.74119,-73.69441],[42.7412,-73.69425],[42.74121,-73.69409],[42.74121,-73.69393],[42.7412,-73.69378],[42.74119,-73.6936],[42.74117,-73.69343],[42.74081,-73.69178],[42.74079,-73.69151],[42.74019,-73.68882],[42.74013,-73.68842],[42.73987,-73.68725],[42.73963,-73.68618],[42.73957,-73.68582],[42.73952,-73.68548],[42.73949,-73.68493],[42.73948,-73.68411],[42.73948,-73.6839],[42.73949,-73.68279],[42.73949,-73.68249],[42.73949,-73.68231],[42.7395,-73.68216],[42.73951,-73.68184],[42.73953,-73.68179],[42.73955,-73.68174],[42.73962,-73.68166],[42.73961,-73.68148],[42.73961,-73.68137],[42.73959,-73.68101],[42.73958,-73.68071],[42.73956,-73.68039],[42.73953,-73.67984],[42.73953,-73.67975],[42.73952,-73.67962],[42.73949,-73.67925],[42.73949,-73.6792],[42.73947,-73.67892],[42.73943,-73.67848],[42.7394,-73.67806],[42.73939,-73.67798],[42.73937,-73.67774],[42.73929,-73.67715],[42.73926,-73.67694],[42.73925,-73.67685],[42.73923,-73.67674],[42.73921,-73.67655],[42.73916,-73.6762],[42.73913,-73.67602],[42.7391,-73.67581],[42.73909,-73.67576],[42.73906,-73.67558],[42.73906,-73.67553],[42.73903,-73.67533],[42.73898,-73.675],[42.73896,-73.6749],[42.73895,-73.67481],[42.73893,-73.67465],[42.73892,-73.67457],[42.73889,-73.6744],[42.73888,-73.6743],[42.73887,-73.67427],[42.73883,-73.67395],[42.7388,-73.67378],[42.73877,-73.67355],[42.73876,-73.67349],[42.73869,-73.67301],[42.73867,-73.67285],[42.73862,-73.67248],[42.73857,-73.67219],[42.73854,-73.67193],[42.73841,-73.67106],[42.73838,-73.67083],[42.73834,-73.67058],[42.73834,-73.67056],[42.73829,-73.6702],[42.73827,-73.67007],[42.73825,-73.66996],[42.73817,-73.66928],[42.73825,-73.66926],[42.73828,-73.66926],[42.73843,-73.66923],[42.73852,-73.66922],[42.73862,-73.66924],[42.73871,-73.66927],[42.73915,-73.66966],[42.73931,-73.66975],[42.73943,-73.66979],[42.73954,-73.66981],[42.73956,-73.66981],[42.73971,-73.66978],[42.7402,-73.66966],[42.74073,-73.66952],[42.74075,-73.66952],[42.74119,-73.66936]],
+  s6: [[42.73623,-73.73228],[42.73715,-73.73165],[42.73721,-73.73161],[42.73724,-73.73159],[42.73789,-73.73115],[42.73807,-73.73103],[42.73813,-73.73099],[42.73827,-73.73089],[42.73818,-73.73019],[42.73813,-73.72974],[42.73811,-73.72955],[42.73809,-73.72934],[42.738,-73.72845],[42.73798,-73.72827],[42.73796,-73.72809],[42.73795,-73.72796],[42.73792,-73.72768],[42.7379,-73.72752],[42.73788,-73.72733],[42.73787,-73.72722],[42.73786,-73.72718],[42.73785,-73.72703],[42.73781,-73.7268],[42.73776,-73.72647],[42.73775,-73.72645],[42.7377,-73.7262],[42.73764,-73.72593],[42.73761,-73.72582],[42.73759,-73.72572],[42.7375,-73.72539],[42.7373,-73.7248],[42.73713,-73.72433],[42.7369,-73.72367],[42.73677,-73.72333],[42.73674,-73.72325],[42.73663,-73.72298],[42.73653,-73.72275],[42.73635,-73.72236],[42.73616,-73.72197],[42.73611,-73.72188],[42.73607,-73.7218],[42.73575,-73.72119],[42.7354,-73.72046],[42.73533,-73.72032],[42.73517,-73.71999],[42.73503,-73.71968],[42.73493,-73.71944],[42.73486,-73.71926],[42.73481,-73.71913],[42.73478,-73.71906],[42.73466,-73.71871],[42.73457,-73.71836],[42.73449,-73.71804],[42.73443,-73.71778],[42.73439,-73.7176],[42.73436,-73.71744],[42.73433,-73.71723],[42.73428,-73.71693],[42.73423,-73.71658],[42.73419,-73.71634],[42.73413,-73.71592],[42.73408,-73.71563],[42.73402,-73.71536],[42.73396,-73.71511],[42.7339,-73.71485],[42.73384,-73.71463],[42.73378,-73.71441],[42.73366,-73.71398],[42.73348,-73.71337],[42.7333,-73.71275],[42.73342,-73.71269],[42.7335,-73.71267],[42.73357,-73.71265],[42.73358,-73.71264],[42.7336,-73.71264],[42.73362,-73.71264],[42.73364,-73.71264],[42.73409,-73.71265],[42.73421,-73.71266],[42.73454,-73.71267],[42.73476,-73.71267],[42.7348,-73.71267],[42.73485,-73.71268],[42.73491,-73.71269],[42.73497,-73.7127],[42.73503,-73.71272],[42.73507,-73.71272],[42.73512,-73.71273],[42.73518,-73.71273],[42.73524,-73.71273],[42.7353,-73.71273],[42.7355,-73.71273],[42.73573,-73.71274],[42.73582,-73.71274],[42.73591,-73.71275],[42.736,-73.71276],[42.73609,-73.71278],[42.7363,-73.71283],[42.73655,-73.7129],[42.73689,-73.71299],[42.73716,-73.71306],[42.73734,-73.71312],[42.73765,-73.71321],[42.73788,-73.71327],[42.73796,-73.7133],[42.73813,-73.71334],[42.73839,-73.7134],[42.73851,-73.71343],[42.73863,-73.71346],[42.73869,-73.71348],[42.73886,-73.71352],[42.73891,-73.71352],[42.73925,-73.71358],[42.73938,-73.7136],[42.7395,-73.71361],[42.73992,-73.71362],[42.74009,-73.71362],[42.74026,-73.71362],[42.74039,-73.71362],[42.74054,-73.71362],[42.74063,-73.71361],[42.74085,-73.7136],[42.74096,-73.71359],[42.74112,-73.71358],[42.74133,-73.71357],[42.74155,-73.71355],[42.74185,-73.71352],[42.74199,-73.71351],[42.74213,-73.7135],[42.74219,-73.7135],[42.74224,-73.7135],[42.74235,-73.71351],[42.7424,-73.71353],[42.74246,-73.71354],[42.74253,-73.71356],[42.74258,-73.71358],[42.74262,-73.71359],[42.74268,-73.71361],[42.74273,-73.71363],[42.74279,-73.71366],[42.7429,-73.71371],[42.74312,-73.71382],[42.74349,-73.71401],[42.7436,-73.71407],[42.74372,-73.71414],[42.74385,-73.71423],[42.74395,-73.71429],[42.74405,-73.71436],[42.74439,-73.7146],[42.74448,-73.71467],[42.74457,-73.71473],[42.74465,-73.71478],[42.74472,-73.71483],[42.74474,-73.71485],[42.74459,-73.71532],[42.74455,-73.71543],[42.74454,-73.71548],[42.74453,-73.7155],[42.74452,-73.71556],[42.74451,-73.71562],[42.74451,-73.71567],[42.74451,-73.71573],[42.74451,-73.71579],[42.74451,-73.71588],[42.74452,-73.71597],[42.74454,-73.71608],[42.74456,-73.71619],[42.74475,-73.71677],[42.74492,-73.71728],[42.74497,-73.71742],[42.745,-73.71754],[42.74502,-73.71764],[42.74504,-73.71775],[42.74504,-73.71787],[42.74505,-73.71799],[42.74504,-73.71812],[42.74502,-73.71826],[42.745,-73.71838],[42.74496,-73.71849],[42.74493,-73.71858],[42.74488,-73.71869],[42.74484,-73.71876],[42.74479,-73.71882],[42.74473,-73.71891],[42.74464,-73.71901],[42.74459,-73.71906],[42.74453,-73.71911],[42.74447,-73.71914],[42.74439,-73.71918],[42.7443,-73.71921],[42.7442,-73.71924],[42.74413,-73.71925],[42.74407,-73.71925],[42.74402,-73.71925],[42.74395,-73.71923],[42.74386,-73.71921],[42.74379,-73.71918],[42.7437,-73.71914],[42.74361,-73.71908],[42.74354,-73.71902],[42.7423,-73.71784],[42.74229,-73.71782],[42.74227,-73.7178],[42.74226,-73.71778],[42.74225,-73.71775],[42.74223,-73.71769],[42.74221,-73.7177],[42.7422,-73.7177],[42.74218,-73.7177],[42.74217,-73.7177],[42.74215,-73.71769],[42.74214,-73.71768],[42.74213,-73.71766],[42.74212,-73.71765],[42.74211,-73.71763],[42.74211,-73.71761]],
+  s7: [[43.14148,-73.70861],[43.1414,-73.70857],[43.14115,-73.7084],[43.14102,-73.70833],[43.14084,-73.70826],[43.14053,-73.70819],[43.13997,-73.70811],[43.13925,-73.70808],[43.13758,-73.70806],[43.1369,-73.708],[43.13675,-73.70798],[43.13643,-73.70792],[43.13605,-73.70785],[43.13588,-73.70782],[43.13553,-73.70776],[43.13524,-73.70771],[43.1352,-73.7077],[43.13474,-73.70761],[43.13373,-73.70743],[43.13316,-73.70735],[43.13235,-73.7084],[43.13234,-73.70842],[43.13167,-73.70934],[43.13108,-73.71014],[43.13055,-73.71084],[43.13041,-73.71101],[43.13001,-73.71154],[43.12962,-73.71207],[43.1289,-73.71305],[43.12868,-73.71335],[43.12847,-73.71361],[43.12816,-73.71406],[43.12796,-73.71433],[43.12792,-73.71438],[43.12778,-73.71456],[43.12699,-73.7156],[43.12648,-73.71628],[43.12641,-73.71637],[43.12558,-73.71749],[43.12525,-73.71793],[43.12481,-73.71852],[43.12479,-73.71855],[43.12377,-73.71992],[43.12338,-73.72049],[43.12305,-73.72095],[43.12289,-73.72118],[43.12174,-73.72287],[43.12135,-73.7234],[43.12083,-73.72406],[43.12042,-73.72453],[43.11979,-73.7252],[43.11972,-73.72527],[43.11898,-73.72598],[43.1184,-73.72655],[43.1183,-73.72665],[43.11569,-73.72918],[43.11532,-73.72956],[43.11415,-73.73067],[43.11347,-73.73136],[43.11207,-73.73271],[43.11049,-73.73429],[43.10934,-73.73557],[43.10907,-73.73589],[43.10844,-73.73667],[43.10818,-73.73699],[43.10797,-73.73727],[43.10701,-73.73854],[43.10697,-73.73861],[43.10653,-73.73919],[43.10548,-73.74065],[43.10466,-73.74176],[43.10429,-73.74227],[43.10363,-73.74317],[43.10354,-73.74329],[43.10302,-73.74398],[43.10292,-73.7441],[43.10225,-73.74509],[43.10224,-73.7451],[43.10187,-73.74554],[43.1016,-73.74594],[43.10094,-73.74687],[43.10065,-73.74728],[43.10055,-73.74748],[43.10023,-73.74789],[43.10009,-73.74802],[43.09992,-73.74819],[43.09968,-73.74838],[43.09942,-73.74858],[43.09928,-73.74868],[43.09877,-73.74905],[43.09859,-73.74919],[43.09835,-73.74938],[43.09828,-73.74944],[43.09821,-73.74949],[43.0981,-73.74962],[43.098,-73.74972],[43.09797,-73.74975],[43.09789,-73.74985],[43.09782,-73.74995],[43.09775,-73.75007],[43.09772,-73.75011],[43.09755,-73.75042],[43.09744,-73.75062],[43.09734,-73.75083],[43.09727,-73.75099],[43.09718,-73.75118],[43.09709,-73.75136],[43.09689,-73.75183],[43.09668,-73.75232],[43.09657,-73.75255],[43.09636,-73.75303],[43.09603,-73.75373],[43.09595,-73.75365],[43.09587,-73.75356],[43.09558,-73.75326],[43.09518,-73.75286],[43.09505,-73.75274],[43.09493,-73.75261],[43.09475,-73.75247],[43.09452,-73.75231],[43.09429,-73.75218],[43.09358,-73.75186],[43.09189,-73.75125],[43.09086,-73.75091],[43.08957,-73.75048],[43.0883,-73.75004],[43.08758,-73.74981],[43.08679,-73.7495],[43.08634,-73.74936],[43.08597,-73.74929],[43.0853,-73.74912],[43.08463,-73.74898],[43.0841,-73.74888],[43.08366,-73.7488],[43.08309,-73.74874],[43.08212,-73.74868],[43.08138,-73.74868],[43.0807,-73.74871],[43.07946,-73.74882],[43.07891,-73.7489],[43.07823,-73.74903],[43.07741,-73.74924],[43.07642,-73.74955],[43.07608,-73.74966],[43.07549,-73.74988],[43.07468,-73.7502],[43.07395,-73.75052],[43.07373,-73.75062],[43.07307,-73.75095],[43.07276,-73.7511],[43.07143,-73.75183],[43.07086,-73.75214],[43.06993,-73.75269],[43.06891,-73.75334],[43.06796,-73.75399],[43.06701,-73.75469],[43.06656,-73.75504],[43.0657,-73.75572],[43.06461,-73.75665],[43.06339,-73.75772],[43.06139,-73.75977],[43.0595,-73.76176],[43.05758,-73.76373],[43.05602,-73.76521],[43.05505,-73.76611],[43.05376,-73.76727],[43.0526,-73.76826],[43.05186,-73.76891],[43.05091,-73.76966],[43.04997,-73.77043],[43.04939,-73.77087],[43.04792,-73.77198],[43.0471,-73.77259],[43.04638,-73.77309],[43.0451,-73.77397],[43.04413,-73.77461],[43.04226,-73.77583],[43.04193,-73.77604],[43.04042,-73.77698],[43.03661,-73.77943],[43.03159,-73.78261],[43.02998,-73.78365],[43.02903,-73.78429],[43.02819,-73.7849],[43.0277,-73.78529],[43.02716,-73.78573],[43.02679,-73.78605],[43.02626,-73.78651],[43.02537,-73.78731],[43.02442,-73.78831],[43.02399,-73.78879],[43.02346,-73.78937],[43.0226,-73.79045],[43.02173,-73.79154],[43.02138,-73.79198],[43.02051,-73.79307],[43.02002,-73.79369],[43.01876,-73.79519],[43.01819,-73.79583],[43.01746,-73.79658],[43.01686,-73.79716],[43.01593,-73.79795],[43.01506,-73.7986],[43.01426,-73.79917],[43.01405,-73.79931],[43.01311,-73.79988],[43.01217,-73.80037],[43.01152,-73.80066],[43.01123,-73.8008],[43.0103,-73.80115],[43.00861,-73.80172],[43.00646,-73.80235],[43.00459,-73.8028],[43.00365,-73.803],[43.00271,-73.80319],[43.00177,-73.80335],[43.00051,-73.80355],[43.00006,-73.80361],[42.99907,-73.80373],[42.99816,-73.80382],[42.99556,-73.80399],[42.99232,-73.80404],[42.99138,-73.80397],[42.99044,-73.80395],[42.98948,-73.80391],[42.98666,-73.80368],[42.98569,-73.80358],[42.98473,-73.80346],[42.98214,-73.80322],[42.98185,-73.80318],[42.98067,-73.80308],[42.97996,-73.80303],[42.979,-73.80294],[42.97803,-73.80286],[42.9771,-73.80275],[42.974,-73.80248],[42.97327,-73.80244],[42.96939,-73.80205],[42.96838,-73.80196],[42.96774,-73.80191],[42.96676,-73.8018],[42.96598,-73.80173],[42.96392,-73.80155],[42.96264,-73.80149],[42.96208,-73.8015],[42.96089,-73.80153],[42.95925,-73.80174],[42.9589,-73.8018],[42.95831,-73.8019],[42.95731,-73.80212],[42.95633,-73.80231],[42.95543,-73.80257],[42.95393,-73.80311],[42.95317,-73.8034],[42.95142,-73.80397],[42.95086,-73.80417],[42.94857,-73.80504],[42.94807,-73.80522],[42.94754,-73.80536],[42.94745,-73.80538],[42.94689,-73.80548],[42.94642,-73.80558],[42.94578,-73.80569],[42.94493,-73.80576],[42.94432,-73.80576],[42.94422,-73.80576],[42.9438,-73.80573],[42.94288,-73.80563],[42.94196,-73.80551],[42.94103,-73.80534],[42.94036,-73.80524],[42.93964,-73.80511],[42.93914,-73.80509],[42.93872,-73.80505],[42.93839,-73.80507],[42.93821,-73.80509],[42.93726,-73.80541],[42.93697,-73.8055],[42.93677,-73.80552],[42.9366,-73.80608],[42.93655,-73.80621],[42.93646,-73.80651],[42.93639,-73.80668],[42.93634,-73.80683],[42.9363,-73.80693],[42.9361,-73.80744],[42.93605,-73.80758],[42.93601,-73.80767],[42.93598,-73.80778],[42.93594,-73.80788],[42.9359,-73.80798],[42.93589,-73.80806],[42.93589,-73.80813],[42.93589,-73.80823],[42.93591,-73.80827],[42.93592,-73.80834],[42.93591,-73.8084],[42.93589,-73.80846],[42.93586,-73.80852],[42.93583,-73.80855],[42.9358,-73.80857],[42.93574,-73.80865],[42.93569,-73.80874],[42.93565,-73.80882],[42.93561,-73.8089],[42.93558,-73.80898],[42.93552,-73.80906],[42.93548,-73.80922],[42.93544,-73.80939],[42.93538,-73.80977],[42.93536,-73.81018],[42.9354,-73.81126],[42.93546,-73.81245],[42.9355,-73.81275],[42.93552,-73.81321],[42.93552,-73.81328],[42.93551,-73.81337],[42.9355,-73.81344],[42.9355,-73.81349],[42.9355,-73.81356],[42.93552,-73.81361],[42.93554,-73.81367],[42.93557,-73.8138],[42.93559,-73.81385],[42.93559,-73.81391],[42.93559,-73.81397],[42.93557,-73.81402],[42.93556,-73.81413],[42.93554,-73.81421],[42.93554,-73.81429],[42.93554,-73.81447],[42.93555,-73.81467],[42.93555,-73.81482],[42.93556,-73.81495],[42.93556,-73.81506],[42.93554,-73.81527],[42.93555,-73.81547],[42.93558,-73.81843],[42.93558,-73.81868],[42.93559,-73.81924],[42.93554,-73.82023],[42.93546,-73.82125],[42.93544,-73.82153],[42.93525,-73.82386],[42.93521,-73.82467],[42.93518,-73.82521],[42.93515,-73.82542],[42.9351,-73.82569],[42.93486,-73.8265],[42.9348,-73.82677],[42.93478,-73.82691],[42.93476,-73.82707],[42.93471,-73.8276],[42.93469,-73.82774],[42.93465,-73.82816],[42.93447,-73.83024],[42.93445,-73.83049],[42.9344,-73.83109],[42.93431,-73.83227],[42.93422,-73.83328],[42.9342,-73.83347],[42.93411,-73.8344],[42.93405,-73.83467],[42.93401,-73.83481],[42.93389,-73.83509],[42.93375,-73.83532],[42.93351,-73.83556],[42.93339,-73.83565],[42.93324,-73.83573],[42.93302,-73.8358],[42.93237,-73.83583],[42.93121,-73.8358],[42.93094,-73.83585],[42.93069,-73.83591],[42.92982,-73.83623],[42.92948,-73.83635],[42.9294,-73.83639],[42.92898,-73.83653],[42.92792,-73.83696],[42.92786,-73.83698],[42.92764,-73.83716],[42.9275,-73.83733],[42.9273,-73.83854],[42.92722,-73.83917],[42.92719,-73.83936],[42.92711,-73.83996],[42.92696,-73.84095],[42.92693,-73.84152],[42.92692,-73.84176],[42.92695,-73.84194],[42.92721,-73.84313],[42.92739,-73.84392],[42.92747,-73.84435],[42.92749,-73.84473],[42.92747,-73.8452],[42.92742,-73.84582],[42.92742,-73.84583],[42.92734,-73.84678],[42.92732,-73.84709],[42.92732,-73.84719],[42.92721,-73.84833],[42.92714,-73.84922],[42.92708,-73.8499],[42.92705,-73.85025],[42.92695,-73.85138],[42.92683,-73.85298],[42.92683,-73.85301],[42.92678,-73.85354],[42.92671,-73.85451],[42.92668,-73.85481],[42.9266,-73.85506],[42.92657,-73.85512],[42.92646,-73.85529],[42.92632,-73.85541],[42.92605,-73.85558],[42.92602,-73.8556],[42.92588,-73.85563],[42.92574,-73.85564],[42.9251,-73.85561],[42.92504,-73.85562],[42.92498,-73.85563],[42.92486,-73.85566],[42.92465,-73.85577],[42.92443,-73.85594],[42.92376,-73.85656],[42.9236,-73.8567],[42.92332,-73.85699],[42.923,-73.8573],[42.92262,-73.85767],[42.9226,-73.85769],[42.92257,-73.85772],[42.92183,-73.85842],[42.92151,-73.85872],[42.92094,-73.85926],[42.92082,-73.85938],[42.9203,-73.85991],[42.9201,-73.86017],[42.91953,-73.8609],[42.91911,-73.86137],[42.91905,-73.86142],[42.91893,-73.86149],[42.91883,-73.86154],[42.91863,-73.86163],[42.91835,-73.86169],[42.91824,-73.86168],[42.91773,-73.86165],[42.9177,-73.86165],[42.91712,-73.86157],[42.91633,-73.86147],[42.91585,-73.8614],[42.91538,-73.86133],[42.91533,-73.86132],[42.9149,-73.86126],[42.91364,-73.86106],[42.91299,-73.86098],[42.91272,-73.86093],[42.91225,-73.86087],[42.91197,-73.86083],[42.91169,-73.8608],[42.91155,-73.8608],[42.9114,-73.86083],[42.91133,-73.86086],[42.91111,-73.86095],[42.91063,-73.86119],[42.91046,-73.86128],[42.91002,-73.86151],[42.9098,-73.86162],[42.9097,-73.86168],[42.90902,-73.86203],[42.90888,-73.86212],[42.90859,-73.86234],[42.9085,-73.86246],[42.90846,-73.86251],[42.90836,-73.86267],[42.90813,-73.86259],[42.90799,-73.86258],[42.90797,-73.86258],[42.90762,-73.86271],[42.90732,-73.86286],[42.90719,-73.86292],[42.90664,-73.86321],[42.90647,-73.86333],[42.90639,-73.86342],[42.90631,-73.86352],[42.90623,-73.8637],[42.90617,-73.86385],[42.90601,-73.86413],[42.90589,-73.86428],[42.90539,-73.86468],[42.90516,-73.86486],[42.90499,-73.86499],[42.90486,-73.86509],[42.90435,-73.86549],[42.9042,-73.8656],[42.90403,-73.86574],[42.90377,-73.86594],[42.90362,-73.86607],[42.90347,-73.8662],[42.90324,-73.86639],[42.90295,-73.86665],[42.90278,-73.86679],[42.90213,-73.86755],[42.90206,-73.86761],[42.90184,-73.86784],[42.90148,-73.86818],[42.90145,-73.86821],[42.90107,-73.86852],[42.9006,-73.86889],[42.89978,-73.86954],[42.89845,-73.8706],[42.89801,-73.87081],[42.89772,-73.87094],[42.89758,-73.87099],[42.8973,-73.87109],[42.89727,-73.8711],[42.89655,-73.87126],[42.8961,-73.87133],[42.89545,-73.87143],[42.89538,-73.87145],[42.89451,-73.87177],[42.89449,-73.87178],[42.89408,-73.87194],[42.89376,-73.87207],[42.89299,-73.8724],[42.89208,-73.87282],[42.89153,-73.87307],[42.8912,-73.87322],[42.89111,-73.87326],[42.89102,-73.87331],[42.89075,-73.87353],[42.89037,-73.87397],[42.89029,-73.87408],[42.88986,-73.87472],[42.88949,-73.87528],[42.88945,-73.87534],[42.88941,-73.8754],[42.88929,-73.87558],[42.88914,-73.87585],[42.88904,-73.87607],[42.88895,-73.87635],[42.8889,-73.87654],[42.88889,-73.87657],[42.88885,-73.87679],[42.88882,-73.87696],[42.88878,-73.87811],[42.88874,-73.8783],[42.88864,-73.87871],[42.88856,-73.87891],[42.88846,-73.87909],[42.88829,-73.87927],[42.88822,-73.87936],[42.88806,-73.87949],[42.888,-73.87954],[42.88795,-73.87956],[42.88783,-73.87964],[42.88749,-73.87983],[42.8874,-73.87988],[42.88691,-73.88015],[42.8867,-73.88026],[42.88642,-73.88041],[42.88639,-73.88042],[42.88632,-73.88046],[42.88617,-73.88055],[42.88605,-73.88062],[42.88591,-73.88071],[42.88575,-73.88087],[42.88564,-73.881],[42.88486,-73.88192],[42.88348,-73.88359],[42.88298,-73.88419],[42.88294,-73.88424],[42.88253,-73.88472],[42.88212,-73.88521],[42.88186,-73.8855],[42.88155,-73.88587],[42.88138,-73.88609],[42.88112,-73.88649],[42.88088,-73.88701],[42.88077,-73.88725],[42.8807,-73.88737],[42.88053,-73.88737],[42.87984,-73.88737],[42.87915,-73.88736],[42.8789,-73.88736],[42.87766,-73.88735],[42.87696,-73.88736],[42.87623,-73.88739],[42.87575,-73.88743],[42.8755,-73.88745],[42.87485,-73.8875],[42.87459,-73.88753],[42.87377,-73.8876],[42.87334,-73.88763],[42.87278,-73.88768],[42.87261,-73.88768],[42.87156,-73.88775],[42.87103,-73.88778],[42.87051,-73.88782],[42.87037,-73.88782],[42.86998,-73.88785],[42.86899,-73.88791],[42.86865,-73.88794],[42.86822,-73.88796],[42.86724,-73.88802],[42.86689,-73.88804],[42.86627,-73.88808],[42.86606,-73.88808],[42.86576,-73.88813],[42.86553,-73.88814],[42.86524,-73.88815],[42.86504,-73.88816],[42.86376,-73.88824],[42.86363,-73.88825],[42.86325,-73.88827],[42.8629,-73.88829],[42.8628,-73.8883],[42.86232,-73.88833],[42.86177,-73.88837],[42.86105,-73.88842],[42.8604,-73.88845],[42.85998,-73.88847],[42.8588,-73.88858],[42.85769,-73.88863],[42.85733,-73.88865],[42.85717,-73.88865],[42.857,-73.88865],[42.85675,-73.88867],[42.85631,-73.88868],[42.85616,-73.88866],[42.85603,-73.88866],[42.85586,-73.88863],[42.85559,-73.88855],[42.85527,-73.88842],[42.85441,-73.88805],[42.85377,-73.88781],[42.85337,-73.88765],[42.85314,-73.88758],[42.85304,-73.88755],[42.85277,-73.88751],[42.85256,-73.88751],[42.85236,-73.88754],[42.85225,-73.88756],[42.8521,-73.8876],[42.85195,-73.88764],[42.85178,-73.8877],[42.8514,-73.88785],[42.85097,-73.88801],[42.85042,-73.88819],[42.84989,-73.88834],[42.84939,-73.88848],[42.84926,-73.8885],[42.84911,-73.88856],[42.84902,-73.88857],[42.84896,-73.8886],[42.84892,-73.88863],[42.84886,-73.88869],[42.8488,-73.88879],[42.84877,-73.88885],[42.84875,-73.8889],[42.84871,-73.88893],[42.84869,-73.88894],[42.84866,-73.88895],[42.84862,-73.88897],[42.84858,-73.88898],[42.84854,-73.88897],[42.8485,-73.88899],[42.84841,-73.88904],[42.84839,-73.88906],[42.84834,-73.8891],[42.84829,-73.88914],[42.84827,-73.88916],[42.8482,-73.88922],[42.84796,-73.88947],[42.84783,-73.88965],[42.84763,-73.88986],[42.84746,-73.89004],[42.84725,-73.89021],[42.84694,-73.89038],[42.84652,-73.89053],[42.84501,-73.89093],[42.84471,-73.89101],[42.84299,-73.89143],[42.8425,-73.89154],[42.84225,-73.89158],[42.84029,-73.89204],[42.84005,-73.89209],[42.84003,-73.89209],[42.83962,-73.89217],[42.83952,-73.89217],[42.83944,-73.89218],[42.83921,-73.8922],[42.8388,-73.89217],[42.83844,-73.8921],[42.83832,-73.89207],[42.83819,-73.89204],[42.83721,-73.89181],[42.83713,-73.89179],[42.83663,-73.89168],[42.83636,-73.89165],[42.83574,-73.89167],[42.83403,-73.89173],[42.8336,-73.89175],[42.83214,-73.89181],[42.83179,-73.89182],[42.83116,-73.89184],[42.83059,-73.89186],[42.8304,-73.89186],[42.83009,-73.89187],[42.82955,-73.89189],[42.82929,-73.89189],[42.82885,-73.89191],[42.82836,-73.89194],[42.82842,-73.89257],[42.82845,-73.89283],[42.82859,-73.89364],[42.82881,-73.8945],[42.82894,-73.89523],[42.82903,-73.89584],[42.82925,-73.89751],[42.82927,-73.89771],[42.82936,-73.8984],[42.82976,-73.89855],[42.83002,-73.89872],[42.83017,-73.89887],[42.83042,-73.89916],[42.83058,-73.89943],[42.83061,-73.89949],[42.83073,-73.89977],[42.83074,-73.89979],[42.83083,-73.90036],[42.83092,-73.90084],[42.83094,-73.90092],[42.8311,-73.90186],[42.83127,-73.90276],[42.83067,-73.90331],[42.83056,-73.90342],[42.83033,-73.90366],[42.83047,-73.90413],[42.83068,-73.90481]],
+};
+
+// ── AI ROUTE SUGGESTIONS ──────────────────────────────────────────
+aiSuggestions.forEach(s=>{
+  // Map: pulsing zone + dashed route line
+  const scoreColor=s.priority==='critical'?'#a13544':s.priority==='high'?'#da7101':'#01696f';
+
+  // Priority zone circle
+  const pulse=L.circle([s.lat,s.lng],{radius:2500,color:scoreColor,weight:1.5,opacity:0.5,fillColor:scoreColor,fillOpacity:0.05,dashArray:'8 5'}).addTo(layers.priority);
+
+  // Dashed route line
+  const _path=roadPaths[s.id]||[[s.lat,s.lng],[s.lat2,s.lng2]];
+  const routeLine=L.polyline(_path,{color:C.teal,weight:3,dashArray:'8 6',opacity:0.8,smoothFactor:1}).addTo(layers.aiRoutes);
+
+  // Suggestion marker
+  const marker=L.circleMarker([s.lat,s.lng],{radius:11,fillColor:C.teal,color:CB.teal,weight:2.5,fillOpacity:0.9})
+    .bindPopup(buildSuggestPopup(s),{maxWidth:290,minWidth:270})
+    .on('click',()=>{
+      highlightAI(s.id);
+      const destAppend=s.nearbyDests&&s.nearbyDests.length>0
+      ? ' This route also serves '+s.nearbyDests.map(d=>d.name).join(', ')+' — making it a multi-purpose corridor with amplified community impact.'
+      : '';
+    showInsight(s.title,'AI Recommendation: '+s.body+destAppend);
+    }).addTo(layers.aiRoutes);
+
+  // Sidebar AI item
+  const el=document.createElement('div');
+  el.className='suggest-item';el.id='ai-'+s.id;
+  const destIconsHtml=s.nearbyDests&&s.nearbyDests.length>0
+    ? `<span style="margin-left:5px;font-size:0.85em;letter-spacing:1px" title="Serves nearby destinations">${[...new Set(s.nearbyDests.map(d=>d.icon))].join('')}</span>`
+    : '';
+  const bonusBadge=s.destBonus>0
+    ? `<span style="font-size:0.68em;background:#d4f0ed;color:#01696f;border-radius:3px;padding:1px 4px;margin-left:3px;font-weight:600" title="Destination proximity bonus">+${s.destBonus}</span>`
+    : '';
+  el.innerHTML=`
+    <div class="suggest-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          <div class="suggest-type ${s.type==='bus'?'type-bus':s.type==='shuttle'?'type-shuttle':'type-stop'}">${s.type==='bus'?'🚌 Bus Route':s.type==='shuttle'?'🚐 Shuttle':'🚏 New Stop'}</div>
+          <div style="font-size:0.68em;padding:2px 5px;border-radius:3px;font-weight:600;background:${s.overlap==='none'?'#d4f0e4':s.overlap==='frequency'?'#fdebd5':s.overlap==='extension'?'#fdebd5':'#fde8cd'};color:${s.overlap==='none'?'#2d6e4e':s.overlap==='frequency'?'#7a4500':'#7a4500'}">${s.overlap==='none'?'✅ New Corridor':s.overlap==='frequency'?'🔁 Freq Boost':'➕ Extension'}</div>
+        </div>
+        <div class="suggest-title">${s.title}</div>
+      </div>
+      <div class="suggest-score ${s.priority==='critical'?'score-critical':s.priority==='high'?'score-high':'score-medium'}">Score ${s.score}${bonusBadge}${destIconsHtml}</div>
+    </div>
+    <div class="suggest-meta" style="font-size:0.74em;color:#666;margin:3px 0 4px;display:flex;gap:10px">
+      <span>📏 ${s.routeMi} mi</span>
+      ${s.costKyr?`<span>💰 $${s.costKyr}K/yr</span>`:''}
+      ${s.costPerMi!==null?`<span style="color:${s.costPerMi<=15?'#437a22':s.costPerMi<=25?'#da7101':'#a13544'}">$${s.costPerMi}K/mi</span>`:''}
+    </div>
+    <div class="suggest-body">${s.body.substring(0,180)}...</div>
+    <div class="suggest-tags">${s.tags.map(t=>`<span class="suggest-tag">${t}</span>`).join('')}</div>`;
+  el.onclick=()=>{
+    map.setView([s.lat,s.lng],12);
+    marker.openPopup();
+    highlightAI(s.id);
+    const destAppend=s.nearbyDests&&s.nearbyDests.length>0
+      ? ' This route also serves '+s.nearbyDests.map(d=>d.name).join(', ')+' — making it a multi-purpose corridor with amplified community impact.'
+      : '';
+    showInsight(s.title,'AI Recommendation: '+s.body+destAppend);
+    switchTabByName('ai');
+  };
+  document.getElementById('ai-list').appendChild(el);
+});
+
+// ── BEFORE / AFTER SIMULATION ─────────────────────────────────────
+// "After" shows proposed routes as solid green lines
+aiSuggestions.slice(0,3).forEach(s=>{
+  const _spath=roadPaths[s.id]||[[s.lat,s.lng],[s.lat2,s.lng2]];
+  L.polyline(_spath,{color:'#437a22',weight:4,opacity:0.9,smoothFactor:1}).addTo(layers.simAfter);
+  L.circleMarker([s.lat2,s.lng2],{radius:7,fillColor:'#437a22',color:'#2d5a14',weight:2,fillOpacity:0.95}).addTo(layers.simAfter);
+});
+
+let simMode='before';
+function toggleBeforeAfter(){
+  if(simMode==='before') setSim('after');
+  else setSim('before');
+}
+function setSim(mode){
+  simMode=mode;
+  document.getElementById('sim-before').classList.toggle('active',mode==='before');
+  document.getElementById('sim-after').classList.toggle('active',mode==='after');
+  const lbl=document.getElementById('sim-label');
+  if(mode==='after'){
+    map.addLayer(layers.simAfter);
+    lbl.textContent='Showing proposed CDTA route additions (+3 priority routes)';
+    lbl.classList.add('show');
+    setTimeout(()=>lbl.classList.remove('show'),3000);
+    // Update KPIs to reflect "after" state
+    document.getElementById('k-deserts').textContent='0';
+    document.getElementById('k-pop').textContent='~3k';
+    document.getElementById('k-time').textContent='28 min';
+    document.getElementById('k-served').textContent='11';
+    document.getElementById('k-partial').textContent='2';
+    document.getElementById('k-deserts').parentElement.classList.remove('bad');
+    document.getElementById('k-deserts').parentElement.classList.add('good');
+  } else {
+    map.removeLayer(layers.simAfter);
+    document.getElementById('k-deserts').textContent='2';
+    document.getElementById('k-pop').textContent='~14k';
+    document.getElementById('k-time').textContent='52 min';
+    document.getElementById('k-served').textContent='9';
+    document.getElementById('k-partial').textContent='3';
+    document.getElementById('k-deserts').parentElement.classList.add('bad');
+    document.getElementById('k-deserts').parentElement.classList.remove('good');
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// POPUP BUILDERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildFacPopup(f){
+  const accessLabel={served:'TRANSIT-SERVED',desert:'ACCESS DESERT',partial:'LIMITED ACCESS'}[f.access];
+  return `<div>
+    <div class="popup-head ${f.access}">${accessLabel}</div>
+    <div class="popup-body">
+      <div class="popup-title">${f.name}</div>
+      <div class="popup-row"><span class="popup-lbl">County</span><span class="popup-val">${f.county}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Nearest stop</span><span class="popup-val ${f.nearestStop>1?'red':'green'}">${f.nearestStop} mi</span></div>
+      <div class="popup-row"><span class="popup-lbl">Transit time</span><span class="popup-val ${f.transitTimeMins>=60?'red':f.transitTimeMins>=35?'orange':'green'}">${f.transitTimeMins===999?'No transit':f.transitTimeMins+' min'}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Stops within ½ mi</span><span class="popup-val ${f.stopsWithin1mi===0?'red':f.stopsWithin1mi<4?'orange':'green'}">${f.stopsWithin1mi}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Car-free households</span><span class="popup-val ${f.noCarPct>20?'red':''}">${f.noCarPct}%</span></div>
+      <div class="popup-row"><span class="popup-lbl">Median income</span><span class="popup-val">$${f.medIncome.toLocaleString()}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Est. adults nearby</span><span class="popup-val">${f.pop.toLocaleString()}</span></div>
+    </div>
+    <div class="popup-ai"><div class="popup-ai-lbl">Gemini Analysis</div>${geminiInsight(f)}</div>
+  </div>`;
+}
+
+function buildDestPopup(d){
+  const typeLabel=d.type==='hospital'?'HOSPITAL':d.type==='school'?'SCHOOL / COLLEGE':'EMPLOYMENT CENTER';
+  return `<div>
+    <div class="popup-head ${d.type}">${typeLabel}</div>
+    <div class="popup-body">
+      <div class="popup-title">${d.name}</div>
+      <div class="popup-row"><span class="popup-lbl">Type</span><span class="popup-val">${d.sub}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Transit access</span><span class="popup-val ${d.type==='hospital'?'orange':'green'}">${d.type==='hospital'?'Partial (check routes)':'Good (multiple routes)'}</span></div>
+    </div>
+    <div class="popup-ai"><div class="popup-ai-lbl">Context</div>${d.type==='hospital'?`Key healthcare destination. Adults in transit deserts face ${d.name} access times exceeding 45+ min by alternative transport.`:`Workforce credential destination. Direct transit from adult ed sites to ${d.name} is critical for program completion and post-graduation employment.`}</div>
+  </div>`;
+}
+
+function buildSuggestPopup(s){
+  const scoreColor=s.priority==='critical'?'#a13544':s.priority==='high'?'#da7101':'#01696f';
+  const penaltyRow=s.overlapPenalty<0
+    ? `<div class="popup-row"><span class="popup-lbl">Overlap penalty</span><span class="popup-val red">${s.overlapPenalty} pts</span></div>`
+    : '';
+  const bonusRow=(s.destBonus>0||s.effBonus>0)
+    ? `<div class="popup-row"><span class="popup-lbl">Dest. bonus</span><span class="popup-val green">+${s.destBonus} pts</span></div>
+       <div class="popup-row"><span class="popup-lbl">Efficiency bonus</span><span class="popup-val ${s.effBonus>0?'green':''}">+${s.effBonus} pts</span></div>`
+    : `<div class="popup-row"><span class="popup-lbl">Dest. bonus</span><span class="popup-val" style="color:#888">+0 pts</span></div>
+       <div class="popup-row"><span class="popup-lbl">Efficiency bonus</span><span class="popup-val" style="color:#888">+0 pts</span></div>`;
+  const baseRow=s.baseScore!==undefined
+    ? `<div class="popup-row"><span class="popup-lbl">Base score</span><span class="popup-val">${s.baseScore}/100</span></div>`
+    : '';
+  const nearbyHtml=s.nearbyDests&&s.nearbyDests.length>0
+    ? `<div class="popup-row" style="align-items:flex-start"><span class="popup-lbl">Serves</span><span class="popup-val" style="line-height:1.6">${s.nearbyDests.map(d=>`${d.icon} ${d.name} <span style="color:#888;font-size:0.75em">(${d.dist}mi)</span>`).join('<br>')}</span></div>`
+    : '';
+  const overlapSection=s.overlap!=='none'
+    ? `<div class="popup-ai" style="background:rgba(218,113,1,0.06);border-left:3px solid #da7101;margin-top:6px;padding:8px 10px;font-size:0.82em;color:#7a4500"><strong>Note on Existing Service:</strong> ${s.overlapNote}</div>`
+    : `<div class="popup-ai" style="background:rgba(67,122,34,0.06);border-left:3px solid #437a22;margin-top:6px;padding:8px 10px;font-size:0.82em;color:#2d5a14"><strong>New Territory:</strong> ${s.overlapNote}</div>`;
+  const destSection=s.nearbyDests&&s.nearbyDests.length>0
+    ? `<div class="popup-ai" style="background:rgba(1,105,111,0.06);border-left:3px solid #01696f;margin-top:6px;padding:8px 10px;font-size:0.82em;color:#2c555a"><strong>Multi-Purpose Corridor:</strong> This route serves ${s.nearbyDests.map(d=>d.name).join(', ')} — amplifying its impact beyond adult education access.</div>`
+    : '';
+  return `<div>
+    <div class="popup-head suggest">AI ROUTE SUGGESTION · SCORE ${s.score}/100</div>
+    <div class="popup-body">
+      <div class="popup-title">${s.title}</div>
+      <div class="popup-row"><span class="popup-lbl">Type</span><span class="popup-val">${s.type==='bus'?'New Bus Route':s.type==='shuttle'?'Demand-Responsive Shuttle':'New Stop Addition'}</span></div>
+      <div class="popup-row"><span class="popup-lbl">vs Existing</span><span class="popup-val ${s.overlap==='none'?'green':s.overlap==='frequency'?'orange':s.overlap==='extension'?'orange':'red'}">${s.overlap==='none'?'✅ New corridor':s.overlap==='frequency'?'🔁 Frequency boost — '+s.overlapRoute:s.overlap==='extension'?'➕ Extension — '+s.overlapRoute:'🟡 Parallel — '+s.overlapRoute}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Priority</span><span class="popup-val ${s.priority==='critical'?'red':s.priority==='high'?'orange':'green'}">${s.priority.toUpperCase()}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Population served</span><span class="popup-val">${s.pop.toLocaleString()}</span></div>
+      <div class="popup-row"><span class="popup-lbl">Car-free households</span><span class="popup-val">${s.carFree}%</span></div>
+      <div class="popup-row"><span class="popup-lbl">Route length</span><span class="popup-val">${s.routeMi} mi</span></div>
+      ${s.costKyr?`<div class="popup-row"><span class="popup-lbl">Est. annual cost</span><span class="popup-val">$${s.costKyr}K/yr</span></div>`:''}
+      ${s.costPerMi!==null?`<div class="popup-row"><span class="popup-lbl">Cost efficiency</span><span class="popup-val ${s.costPerMi<=15?'green':s.costPerMi<=25?'orange':'red'}">$${s.costPerMi}K/mi · ${s.effBonus>0?'+'+s.effBonus+' pts':'no bonus'}</span></div>`:''}
+      <hr style="border:none;border-top:1px solid #eee;margin:4px 0">
+      ${baseRow}
+      ${bonusRow}
+      ${penaltyRow}
+      ${nearbyHtml}
+    </div>
+    <div class="popup-ai"><div class="popup-ai-lbl">AI Recommendation</div>${s.body}</div>
+    ${overlapSection}
+    ${destSection}
+  </div>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GEMINI INSIGHT ENGINE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function geminiInsight(f){
+  const notes = f.notes||'';
+  const timeStr = f.transitTimeMins===999 ? 'no viable transit' : f.transitTimeMins+' min by transit';
+  if(f.access==='desert') return `Transit desert: ${f.nearestStop} miles to nearest stop (${timeStr}). Transportation deserts disproportionately affect low-income and vulnerable communities — cutting off access to hospitals, adult education, and social support. ${f.noCarPct}% car-free, median income $${f.medIncome.toLocaleString()}/yr — rideshare costs ~15–20% of weekly income per round trip. ${notes ? notes+' ' : ''}A demand-responsive shuttle or CDTA extension is the highest-ROI intervention here.`;
+  if(f.access==='served') return `Well-served by CDTA: ${f.stopsWithin1mi} stops within walking distance — estimated ${timeStr} to reach the nearest transit hub. Serving ${f.noCarPct}% car-free households effectively. ${notes ? notes+' ' : ''}Maintain current service levels and consider evening extension to 10pm for night-class students.`;
+  return `Limited CDTA access: stop nearby but estimated ${timeStr} — long ride time or infrequent service creates a real attendance barrier. ${f.noCarPct}% of households are car-free. ${notes ? notes+' ' : ''}Extending evening runs or adding express service would significantly reduce this barrier.`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UI HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function highlightFac(id){
+  document.querySelectorAll('.fac-item').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('fi-'+id);
+  if(el){el.classList.add('active');el.scrollIntoView({block:'nearest'});}
+}
+function highlightAI(id){
+  document.querySelectorAll('.suggest-item').forEach(el=>el.style.background='');
+  const el=document.getElementById('ai-'+id);
+  if(el){el.style.background='var(--teal-light)';el.scrollIntoView({block:'nearest'});}
+}
+
+function showInsight(title,text){
+  document.getElementById('insight-title').textContent=title;
+  document.getElementById('insight-text').textContent=text;
+  document.getElementById('insight-bar').classList.add('open');
+}
+function closeInsight(){document.getElementById('insight-bar').classList.remove('open');}
+
+function switchTab(name,el){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel-body').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+function switchTabByName(name){
+  const tabs=document.querySelectorAll('.ptab');
+  const bodies=document.querySelectorAll('.panel-body');
+  const names=['layers','facilities','destinations','ai'];
+  const i=names.indexOf(name);
+  if(i<0)return;
+  tabs.forEach(t=>t.classList.remove('active'));
+  bodies.forEach(b=>b.classList.remove('active'));
+  tabs[i].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── DARK MODE ──────────────────────────────────────────────────────
+let darkMode=false;
+const themeBtn=document.getElementById('theme-btn');
+function toggleTheme(){
+  darkMode=!darkMode;
+  document.documentElement.setAttribute('data-theme',darkMode?'dark':'light');
+  themeBtn.innerHTML=darkMode
+    ?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    :'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  // Swap tile layer for dark mode
+  map.eachLayer(l=>{if(l._url)map.removeLayer(l);});
+  L.tileLayer(darkMode
+    ?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    :'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CartoDB | NYSED · Census ACS · CDTA GTFS · Capital District EOC',maxZoom:18}
+  ).addTo(map);
+}
+
+// ── FULLSCREEN ────────────────────────────────────────────────────────────
+function toggleFullscreen(){
+  const wrap = document.querySelector('.map-wrap');
+  const isFs = wrap.classList.toggle('is-fullscreen');
+  document.getElementById('fs-icon-expand').style.display   = isFs ? 'none' : '';
+  document.getElementById('fs-icon-compress').style.display = isFs ? ''     : 'none';
+  setTimeout(()=>map.invalidateSize(), 50);
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.querySelector('.map-wrap').classList.contains('is-fullscreen')){
+    toggleFullscreen();
+  }
+});
+</script>
+</body>
+</html>
