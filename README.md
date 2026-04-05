@@ -2,7 +2,7 @@
 
 > 🏆 **Winner** — HV Open Data Hackathon 2026 · RPI Troy, NY · Built in a single day
 
-**[🗺️ Live Demo](https://ericl0512.github.io/GoTo-HVTechFest-2026-Winner-/app/)** · **[📊 Presentation](https://ericl0512.github.io/GoTo-HVTechFest-2026-Winner-/presentation/)**
+**[🗺️ Live Demo](https://ericl0512.github.io/GoTo-Transit-Planner/app/)** · **[📊 Presentation](https://ericl0512.github.io/GoTo-Transit-Planner/presentation/)**
 
 ---
 
