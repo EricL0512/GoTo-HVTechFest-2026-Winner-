@@ -5,12 +5,13 @@ Strategy: add a roadPaths lookup object just before the aiSuggestions
 rendering loop, then replace the straight-line polyline calls with
 path lookups — falling back to straight line if a path is missing.
 """
-import json, re
+import json, re, os, sys
 
-with open("/home/user/workspace/route_paths.json") as f:
+# Load route_paths.json from same directory as this script
+_json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "route_paths.json")
+with open(_json_path) as f:
     routes = json.load(f)
 
-import sys, os
 
 # Accept path as command-line argument or prompt if not provided
 if len(sys.argv) > 1:
