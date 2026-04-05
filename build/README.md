@@ -72,7 +72,7 @@ If no path is provided, each script will prompt you and default to `../app/index
 
 | Data | Source |
 |------|--------|
-| CDTA route stops & headways | [CDTA published schedules](https://www.cdta.org/schedules) |
+| CDTA route stops & headways | [CDTA published schedules](https://www.cdta.org/) |
 | Adult ed facility locations | [NYSED facility directory](https://www.nysed.gov) |
-| Road geometry | [OSRM public API](https://router.project-osrm.org) via OpenStreetMap |
+| Road geometry | [OSRM public API](https://project-osrm.org/) via OpenStreetMap |
 | Destination locations (hospitals, schools, jobs) | Manually geocoded from public records |
