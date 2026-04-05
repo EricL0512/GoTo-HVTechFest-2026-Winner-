@@ -98,7 +98,7 @@ GoTo-Transit-Planner/
 | CDTA Route Schedules | [cdta.org/schedules](https://www.cdta.org/routes-and-schedules) | Stop locations, headways, route polylines |
 | Census ACS 5-Year | [census.gov](https://data.census.gov) | Car-free household %, median income |
 | NYSED Facility Directory | [nysed.gov](https://www.nysed.gov) | Adult education facility locations |
-| OpenStreetMap via OSRM | [router.project-osrm.org](https://router.project-osrm.org) | Road-following route geometry |
+| OpenStreetMap via OSRM | [router.project-osrm.org](https://project-osrm.org) | Road-following route geometry |
 | Capital District EOC | [cdeocc.org](https://www.cdeocc.org) | Facility validation and context |
 
 ---
